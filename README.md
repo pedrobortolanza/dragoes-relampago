@@ -7,7 +7,7 @@ Jogo de navegador no estilo Dragon City, feito para caber numa sessão: crie, cr
 - Ou sirva a pasta, se preferir: `python3 -m http.server` e acesse `http://localhost:8000`.
 
 ## Arquivos
-- `index.html`: o jogo inteiro (HTML, CSS e JavaScript puro).
+- `index.html`: o jogo inteiro (HTML, CSS e JavaScript puro, com o three.js embutido para os modelos 3D; funciona sem internet).
 - `DESIGN-NOTAS.md`: mecânicas, fórmulas, números de balanceamento e conquistas implementados.
 - `docs/`: documentação completa.
 

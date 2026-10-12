@@ -11,6 +11,7 @@ module.exports = function load(path) {
     { get: (o, k) => (k in o ? o[k] : (typeof k === 'string' ? () => el() : undefined)) });
   const ctx = {
     Som: new Proxy({}, { get: () => () => {} }),
+    M3: null, // modelos 3D: sem WebGL no Node, o jogo cai na reserva em SVG
     console, Math, JSON, Object, Array, Set, String, Number, parseInt,
     performance: { now: () => Date.now() },
     setInterval: () => 0, setTimeout: () => 0,
