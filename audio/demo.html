@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sons dos Dragões</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffaf0;--tx:#2b2118;--mut:#7a6a58;--bd:#e3d6c0;--ac:#e8742a;--ac2:#f5a623;--on:#2b2118}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17120e;--card:#221b15;--tx:#f3e9da;--mut:#a8977f;--bd:#3a2f25;--ac:#ff8a3d;--ac2:#ffc04d;--on:#17120e}}
+:root[data-theme="dark"]{--bg:#17120e;--card:#221b15;--tx:#f3e9da;--mut:#a8977f;--bd:#3a2f25;--ac:#ff8a3d;--ac2:#ffc04d;--on:#17120e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;margin-bottom:8px}
+h1{font-size:26px;margin:0}
+p.sub{color:var(--mut);margin:4px 0 20px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin:14px 0}
+h2{font-size:15px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.grid{display:flex;flex-wrap:wrap;gap:8px}
+button.s{all:unset;cursor:pointer;padding:8px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);font-size:14px;transition:transform .08s}
+button.s:hover{border-color:var(--ac)}
+button.s:active{transform:scale(.96)}
+button.s:focus-visible{outline:2px solid var(--ac)}
+button.s.on{background:var(--ac);color:var(--on);border-color:var(--ac)}
+code{font:12px ui-monospace,Menlo,monospace;color:var(--mut)}
+button.s code{display:block;margin-top:2px}
+.row{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+.aviso{padding:10px 14px;border-radius:10px;background:color-mix(in srgb,var(--ac2) 22%,transparent);margin-bottom:12px}
+.aviso.ok{display:none}
+input[type=range]{accent-color:var(--ac)}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>🐉 Sons dos Dragões</h1>
+  <div id="controles"></div>
+</header>
+<p class="sub">Todos os sons e músicas do jogo, gerados ao vivo no navegador. Clique para ouvir; cada botão mostra a chamada que o jogo usa. Tecla <b>M</b> liga e desliga o som.</p>
+<div class="aviso" id="aviso">Clique em qualquer lugar da página para liberar o áudio (regra do navegador).</div>
+
+<section>
+  <h2>Música</h2>
+  <div class="grid" id="musicas"></div>
+  <div class="row" style="margin-top:12px">
+    <label>Tensão da ilha (tremores): <input type="range" min="0" max="100" value="0" id="tensao"> <code id="tensaoV">Som.tensao(0)</code></label>
+  </div>
+</section>
+
+<section><h2>Ataques por elemento</h2><div class="grid" id="ataques"></div></section>
+<section><h2>Especiais por elemento</h2><div class="grid" id="especiais"></div></section>
+<section><h2>Nascimento e revelação</h2><div class="grid" id="revelacao"></div></section>
+<section><h2>Tremores do Ancestral</h2><div class="grid" id="tremores"></div></section>
+<div id="grupos"></div>
+</main>
+
+<script src="audio.js"></script>
+<script>
+const GRUPOS = [
+  ['Interface', [['clique','Clique'],['aba','Trocar aba'],['confirmar','Confirmar'],['erro','Erro / sem ouro'],['pausar','Pausar'],['retomar','Retomar']]],
+  ['Economia', [['coletar','Coletar ouro'],['coletar','Coleta grande',{quantidade:4}],['coletarTudo','Coletar tudo'],['comprar','Comprar'],['vender','Vender'],['gemas','Ganhar gemas']]],
+  ['Fazenda', [['plantar','Plantar'],['colher','Colher'],['colherTudo','Colher tudo']]],
+  ['Dragões e chocadeira', [['alimentar','Alimentar'],['nivelDragao','Dragão subiu de nível'],['ovoColocado','Ovo na chocadeira'],['ovoPronto','Ovo pronto'],['chocar','Chocar'],['cruzar','Cruzar']]],
+  ['Batalha', [['batalhaInicio','Início da luta'],['acerto','Acerto'],['critico','Crítico'],['superEficaz','Super eficaz'],['poucoEficaz','Pouco eficaz'],['nocaute','Nocaute'],['vitoria','Vitória'],['derrota','Derrota']]],
+  ['Progresso', [['nivelJogador','Nível do jogador'],['conquista','Conquista'],['missao','Missão concluída']]],
+  ['Eventos aleatórios', [['evento','Anúncio genérico'],['chuvaOuro','Chuva de Ouro'],['colheitaFarta','Colheita Farta'],['ovoPerdido','Ovo Perdido aparece'],['ovoPego','Ovo Perdido pego'],['dragaoSelvagem','Dragão Selvagem'],['mercador','Mercador Viajante']]],
+  ['Dragão Ancestral e final', [['rugido','Rugido'],['despertar','Ancestral despertou'],['soproAncestral','Sopro Ancestral'],['finalVitoria','Final: a ilha resistiu'],['finalDerrota','Final: o Ancestral tomou a ilha']]],
+];
+const ELEM = [['fogo','🔥 Fogo'],['agua','💧 Água'],['planta','🌿 Planta'],['terra','🪨 Terra'],['eletrico','⚡ Elétrico'],['gelo','❄️ Gelo'],['metal','⚙️ Metal'],['trevas','🌑 Trevas'],['luz','✨ Luz']];
+
+function chamada(n, o) { return `Som.play('${n}'${o ? ', ' + JSON.stringify(o).replace(/"(\w+)":/g, '$1: ').replace(/"/g, "'") : ''})`; }
+function botao(rotulo, cod, fn) {
+  const b = document.createElement('button'); b.className = 's'; b.type = 'button';
+  b.innerHTML = `${rotulo}<code>${cod}</code>`; b.onclick = fn; return b;
+}
+function som(alvo, n, rotulo, o) { alvo.appendChild(botao(rotulo, chamada(n, o), () => Som.play(n, o))); }
+
+const gEl = document.getElementById('grupos');
+GRUPOS.forEach(([titulo, itens]) => {
+  const s = document.createElement('section'); s.innerHTML = `<h2>${titulo}</h2><div class="grid"></div>`;
+  itens.forEach(([n, r, o]) => som(s.querySelector('.grid'), n, r, o)); gEl.appendChild(s);
+});
+ELEM.forEach(([e, r]) => { som(ataques, 'ataque', r, { elemento: e }); som(especiais, 'especial', r, { elemento: e }); });
+[['comum','Comum'],['raro','Raro'],['epico','Épico'],['lendario','Lendário']].forEach(([k, r]) => som(revelacao, 'revelacao', r, { raridade: k }));
+[[0.25,'Faltam 5 min'],[0.5,'Faltam 2 min'],[0.75,'Falta 1 min'],[1,'Faltam 30 s']].forEach(([k, r]) => som(tremores, 'tremor', r, { intensidade: k }));
+
+const FX = [['ilha','🏝️ Ilha'],['batalha','⚔️ Arena'],['invasao','🐲 Invasão Final'],['placar','🏆 Placar final'],[null,'⏹️ Parar']];
+FX.forEach(([f, r]) => {
+  const b = botao(r, f ? `Som.musica('${f}')` : 'Som.musica(null)', () => Som.musica(f));
+  b.dataset.faixa = f || ''; musicas.appendChild(b);
+});
+tensao.oninput = () => { const v = tensao.value / 100; Som.tensao(v); tensaoV.textContent = `Som.tensao(${v.toFixed(2)})`; };
+
+Som.criarControles(document.getElementById('controles'));
+Som.ligarTeclaM();
+Som.aoMudar((e) => {
+  aviso.classList.toggle('ok', e.ativo || !e.suportado);
+  if (!e.suportado) { aviso.textContent = 'Este navegador não tem Web Audio.'; aviso.classList.remove('ok'); }
+  musicas.querySelectorAll('button').forEach((b) => b.classList.toggle('on', (b.dataset.faixa || null) === e.faixa && !!e.faixa));
+});
+document.addEventListener('pointerdown', () => setTimeout(() => aviso.classList.toggle('ok', Som.estado().ativo), 100), { once: true });
+</script>
+</body>
+</html>

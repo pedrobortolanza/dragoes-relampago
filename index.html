@@ -1,0 +1,2759 @@
+<title>Dragões Relâmpago</title>
+<meta name="description" content="Jogo de navegador de uma sessão: crie, cruze, evolua e batalhe com dragões contra o relógio.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: barra de recursos fixa no topo, abas logo abaixo, conteúdo em painéis de "pedra vulcânica" à noite. Tema único e escuro, por escolha. */
+:root {
+  --bg: #130f1f;
+  --panel: #1e1832;
+  --panel-2: #2a2245;
+  --line: #3d3363;
+  --fg: #f4effd;
+  --muted: #a89ec7;
+  --ember: #ff7a3d;
+  --ember-2: #ffb35c;
+  --gold: #ffcc4d;
+  --food: #84e08a;
+  --gem: #62e3ff;
+  --good: #6ee7a0;
+  --bad: #ff6b7a;
+  --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --font-body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --r: 14px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(1200px 600px at 80% -10%, #2b1a3d 0%, transparent 60%), var(--bg);
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--gem); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 400; letter-spacing: .3px; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.25rem; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; }
+
+/* Barra superior */
+.top {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+  background: rgba(19, 15, 31, .94); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-block: 10px; }
+.brand { font-family: var(--font-display); font-size: 1.15rem; color: var(--ember-2); margin-right: auto; white-space: nowrap; }
+.res { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; font-weight: 800; }
+.res small { color: var(--muted); font-weight: 600; }
+.res.gold b { color: var(--gold); } .res.food b { color: var(--food); } .res.gem b { color: var(--gem); }
+.lvl { display: flex; flex-direction: column; gap: 3px; min-width: 120px; }
+.lvl span { font-size: .8rem; font-weight: 800; }
+.bar { height: 7px; background: var(--panel-2); border-radius: 999px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--ember), var(--ember-2)); border-radius: inherit; transition: width .3s; }
+.bar.green > i { background: linear-gradient(90deg, #3fbf6b, var(--food)); }
+.bar.blue > i { background: linear-gradient(90deg, #2f8fd6, var(--gem)); }
+.bar.gold > i { background: linear-gradient(90deg, #d69a1f, var(--gold)); }
+.bar.hp > i { background: linear-gradient(90deg, #36c46f, #9cf07b); }
+.bar.hp.low > i { background: linear-gradient(90deg, #d93a3a, #ff8a5c); }
+.timer { font-family: var(--font-display); font-size: 1.2rem; padding: 2px 10px; border-radius: 10px; background: var(--panel-2); }
+.timer.hurry { color: var(--bad); animation: pulse 1s infinite; }
+.iconbtn { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 5px 10px; font-weight: 700; }
+.buffs { display: flex; gap: 6px; flex-wrap: wrap; }
+.buff { font-size: .8rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: #3a2a10; color: var(--gold); border: 1px solid #6b4d16; }
+
+/* Abas */
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-block: 10px; scrollbar-width: thin; }
+.tab { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 800; color: var(--muted); position: relative; }
+.tab[aria-selected="true"] { background: var(--ember); border-color: var(--ember); color: #1b0e05; }
+.tab .badge { position: absolute; top: -6px; right: -4px; background: var(--gem); color: #04242c; font-size: .7rem; border-radius: 999px; padding: 0 6px; }
+
+/* Ilha isométrica + painéis */
+body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+.stage { position: relative; }
+.mapwrap { overflow: auto; background: #1d5f8f; scrollbar-width: thin; overscroll-behavior: contain; }
+.mapwrap svg.iso { display: block; width: 100%; height: auto; max-height: calc(100vh - 150px); margin-inline: auto; }
+.iso .bld { cursor: pointer; }
+.iso .bld:hover .lot, .iso .bld:focus .lot { filter: brightness(1.15); }
+.iso .bld:focus { outline: none; }
+.iso .bld:focus-visible .lot { stroke: #62e3ff; stroke-width: 3; }
+.iso text { font-family: var(--font-body); font-weight: 800; pointer-events: none; }
+.iso .lbl { font-size: 12px; fill: #fff; }
+.iso .pill { fill: rgba(19, 15, 31, .8); }
+.iso .bubble { animation: hover 1.4s ease-in-out infinite; }
+.iso .bubble.full { animation: pulsebub .8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.iso .roam { animation: roam 7s ease-in-out infinite alternate; }
+.iso .wave { animation: wavex 4s ease-in-out infinite alternate; }
+.iso .cloud { animation: cloud 60s linear infinite; }
+.iso .cloud.c2 { animation-duration: 85s; animation-delay: -40s; }
+.iso .cloud.c3 { animation-duration: 70s; animation-delay: -20s; }
+.iso .heart { transform-box: fill-box; transform-origin: center; animation: beat 1.2s ease-in-out infinite; }
+.iso .flag { transform-box: fill-box; transform-origin: 0 50%; animation: flagw 1.4s ease-in-out infinite alternate; }
+.iso .smoke { animation: wisp 3s ease-in-out infinite; }
+.iso .ready-crop { animation: hover 1s ease-in-out infinite; }
+.iso .ghost { opacity: .55; }
+.iso .ghost:hover { opacity: .9; }
+@keyframes pulsebub { 50% { transform: scale(1.18); } }
+@keyframes roam { from { transform: translateX(-7px); } to { transform: translateX(7px); } }
+@keyframes wavex { to { transform: translateX(14px); opacity: .25; } }
+@keyframes cloud { from { transform: translateX(-300px); } to { transform: translateX(1300px); } }
+@keyframes beat { 50% { transform: scale(1.25); } }
+@keyframes flagw { to { transform: skewY(8deg) scaleX(.85); } }
+.hud { position: absolute; top: 10px; left: 16px; right: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.hud .box { background: rgba(19, 15, 31, .86); border: 1px solid var(--line); border-radius: 14px; padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; backdrop-filter: blur(4px); }
+.hud .crop { padding: 3px 8px; }
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; justify-content: center; gap: 4px; overflow-x: auto;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); background: rgba(19, 15, 31, .96); border-top: 1px solid var(--line); }
+.dock .tab { flex: none; display: flex; flex-direction: column; align-items: center; gap: 1px; border: 1px solid transparent; border-radius: 14px; padding: 5px 10px; background: transparent; color: var(--muted); font-weight: 800; font-size: .72rem; position: relative; }
+.dock .tab .ic { font-size: 22px; line-height: 1.1; }
+.dock .tab[aria-selected="true"] { background: var(--ember); color: #1b0e05; }
+.dock .tab .badge { position: absolute; top: -2px; right: 2px; background: var(--gem); color: #04242c; font-size: .7rem; border-radius: 999px; padding: 0 6px; }
+.sheet-back { position: fixed; inset: 0; z-index: 30; background: rgba(8, 6, 14, .55); }
+.sheet { position: fixed; z-index: 31; left: 50%; transform: translateX(-50%); top: calc(70px + env(safe-area-inset-top, 0px)); bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  width: min(1100px, calc(100% - 24px)); background: var(--bg); border: 1px solid var(--line); border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.5); animation: sheetin .22s ease-out; }
+.sheet > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.sheet > header h2 { font-size: 1.35rem; }
+.sheet-body { overflow-y: auto; padding: 14px 16px 20px; }
+@keyframes sheetin { from { opacity: 0; transform: translate(-50%, 16px); } }
+@media (max-width: 700px) {
+  .mapwrap svg.iso { width: 920px; max-width: none; max-height: none; }
+  .sheet { top: auto; height: 82%; width: 100%; border-radius: 20px 20px 0 0; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+  .dock { justify-content: flex-start; }
+  .hud { top: 8px; left: 8px; right: 8px; }
+  .hud-lbl { display: none; }
+  .top .wrap > .iconbtn[data-a="askEnd"] { padding: 5px 8px; }
+}
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; font-weight: 800; }
+.btn:hover:not(:disabled) { border-color: var(--ember-2); }
+.btn.primary { background: linear-gradient(180deg, var(--ember-2), var(--ember)); border-color: transparent; color: #241005; }
+.btn.gemb { background: #0f3440; border-color: #1f6577; color: var(--gem); }
+.btn.small { padding: 4px 9px; font-size: .85rem; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.cost { font-weight: 800; }
+.cost.g { color: var(--gold); } .cost.f { color: var(--food); } .cost.m { color: var(--gem); }
+.btn.primary .cost { color: inherit; }
+.hint { font-size: .85rem; color: var(--muted); }
+
+/* Ícone de dragão */
+.dic { position: relative; display: inline-block; flex: none; }
+.dic .els { position: absolute; bottom: -2px; right: -4px; font-size: 11px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 0 3px; line-height: 1.4; }
+.dic.s { width: 42px; height: 36px; }
+.dic.m { width: 66px; height: 56px; }
+.dic.l { width: 160px; height: 134px; }
+.dic.xl { width: 220px; height: 184px; }
+.dic.l .els, .dic.xl .els { display: none; }
+.dic.unknown .dg { filter: brightness(0); opacity: .35; }
+.dic.unknown .els { display: none; }
+.dic.flip .dg { transform: scaleX(-1); }
+.dic.pop { animation: popin .6s cubic-bezier(.2, 1.6, .4, 1); }
+.dg { display: block; width: 100%; height: 100%; overflow: visible; }
+.dg .shadow { fill: rgba(0, 0, 0, .35); transform-box: fill-box; transform-origin: center; animation: shadowp 2.4s ease-in-out infinite; animation-delay: var(--dl); }
+.dg .base { transform-box: fill-box; transform-origin: center; }
+.dg .all { animation: hover 2.4s ease-in-out infinite; animation-delay: var(--dl); }
+.dg .wing { transform-origin: 50px 50px; animation: flap .8s ease-in-out infinite; animation-delay: var(--dl); }
+.dg .wing-b { animation-delay: calc(var(--dl) - .12s); }
+.dg .tail { transform-origin: 38px 62px; animation: sway 2s ease-in-out infinite; animation-delay: var(--dl); }
+.dg .head { transform-origin: 74px 58px; animation: nod 2.4s ease-in-out infinite; animation-delay: var(--dl); }
+.dg .eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; animation-delay: var(--dl); }
+.dg .flame { transform-box: fill-box; transform-origin: 50% 100%; animation: flick .3s ease-in-out infinite alternate; }
+.dg .zap { animation: zap 1.1s steps(1) infinite; }
+.dg .spark { transform-box: fill-box; transform-origin: center; animation: twinkle 1.6s ease-in-out infinite; }
+.dg .spark:nth-of-type(2n) { animation-delay: -.8s; }
+.dg .wisp { animation: wisp 3s ease-in-out infinite; }
+.dg .aura { transform-box: fill-box; transform-origin: center; animation: aura 2.2s ease-in-out infinite; }
+.dg .halo { animation: hover 2s ease-in-out infinite; }
+.dg .drip { animation: drip 1.8s ease-in infinite; }
+.proj { position: fixed; z-index: 65; pointer-events: none; font-size: 30px; filter: drop-shadow(0 0 10px rgba(255, 255, 255, .7)); }
+@keyframes hover { 50% { transform: translateY(-3px); } }
+@keyframes shadowp { 50% { transform: scaleX(.88); opacity: .7; } }
+@keyframes flap { 50% { transform: rotate(-16deg) scaleY(.8); } }
+@keyframes sway { 50% { transform: rotate(8deg); } }
+@keyframes nod { 50% { transform: rotate(-4deg); } }
+@keyframes blink { 0%, 91%, 97%, 100% { transform: scaleY(1); } 94% { transform: scaleY(.1); } }
+@keyframes flick { to { transform: scale(1.12, .86); } }
+@keyframes zap { 50% { opacity: .25; } }
+@keyframes twinkle { 50% { transform: scale(.3) rotate(45deg); opacity: .3; } }
+@keyframes wisp { 50% { transform: translateY(-5px); opacity: .25; } }
+@keyframes aura { 50% { transform: scale(1.08); opacity: .08; } }
+@keyframes drip { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(8px); opacity: 0; } }
+@keyframes popin { from { transform: scale(.2) rotate(-12deg); opacity: 0; } }
+.rar-C { color: #c9c3dc; } .rar-R { color: #64bcff; } .rar-E { color: #d39bff; } .rar-L { color: #ffc23d; }
+
+/* Ilha */
+.habs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.hab { background: linear-gradient(180deg, #2c2450, #221b3d); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; text-align: left; transition: transform .1s; min-height: 118px; }
+.hab:hover { border-color: var(--gold); }
+.hab:active { transform: scale(.97); }
+.hab.full { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(255, 204, 77, .25); }
+.hab .drs { display: flex; gap: 4px; min-height: 36px; }
+.hab .slot { width: 36px; height: 36px; border-radius: 50%; border: 2px dashed var(--line); margin-inline: 3px; }
+.hab .st { font-weight: 800; color: var(--gold); display: flex; justify-content: space-between; font-size: .9rem; }
+.farms { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.farm { background: #2a2116; border: 1px solid #4d3b22; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 96px; justify-content: center; font-weight: 700; font-size: .85rem; }
+.farm .big { font-size: 28px; line-height: 1; }
+.farm.ready { border-color: var(--food); box-shadow: 0 0 0 2px rgba(132, 224, 138, .25); animation: bob 1.2s ease-in-out infinite; }
+.farm .bar { width: 100%; }
+.crops { display: flex; gap: 6px; flex-wrap: wrap; }
+.crop { border: 1px solid var(--line); background: var(--panel-2); border-radius: 10px; padding: 4px 8px; font-weight: 700; font-size: .85rem; }
+.crop[aria-pressed="true"] { border-color: var(--food); background: #1d3a22; }
+.eggs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.egg { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; align-items: center; text-align: center; font-size: .85rem; }
+.egg .shell { font-size: 34px; line-height: 1; }
+.egg.ready .shell { animation: wobble .8s ease-in-out infinite; }
+.egg.empty { border-style: dashed; color: var(--muted); justify-content: center; min-height: 110px; }
+
+/* Dragões */
+.dlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.dcard { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; gap: 12px; align-items: center; min-width: 0; }
+.dcard .info { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.dcard .name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcard .meta { font-size: .8rem; color: var(--muted); }
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.dex .cell { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: .72rem; font-weight: 700; padding: 8px 4px; border-radius: 10px; background: var(--panel-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 4px; font-weight: 700; font-size: .85rem; }
+.chip[aria-pressed="true"] { border-color: var(--ember-2); background: #3d2614; }
+.chip:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Cruzamento */
+.breedbox { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; }
+.parent { background: var(--panel-2); border: 2px dashed var(--line); border-radius: 14px; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; text-align: center; font-weight: 700; }
+.parent.set { border-style: solid; border-color: var(--ember); }
+.heart { font-size: 30px; }
+.outcomes { display: flex; flex-direction: column; gap: 6px; }
+.outcome { display: flex; align-items: center; gap: 10px; font-size: .9rem; }
+.outcome .pct { margin-left: auto; font-weight: 800; }
+
+/* Arena */
+.ladder { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.rung { text-align: center; font-size: .68rem; font-weight: 800; padding: 6px 2px; border-radius: 8px; background: var(--panel-2); color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.rung.done { background: #1e3b2a; color: var(--good); }
+.rung.cur { background: var(--ember); color: #241005; }
+.battle { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.side { background: var(--panel-2); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 0; }
+.side .fname { font-weight: 800; }
+.side .bar { width: 100%; height: 12px; }
+.bench { display: flex; gap: 6px; }
+.bench .ko { filter: grayscale(1) brightness(.5); }
+.log { background: #0e0b18; border-radius: 12px; padding: 10px 12px; font-size: .85rem; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.log .se { color: var(--good); } .log .ne { color: var(--muted); } .log .cr { color: var(--gold); } .log .ko { color: var(--bad); }
+.result { text-align: center; padding: 18px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.result h2 { font-size: 2rem; }
+
+/* Missões e conquistas */
+.missions { display: flex; flex-direction: column; gap: 10px; }
+.mission { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+.mission .ic { font-size: 26px; }
+.mission.done { border-color: var(--good); }
+.achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.ach { display: flex; gap: 10px; align-items: center; background: var(--panel-2); border-radius: 12px; padding: 10px; border: 1px solid var(--line); }
+.ach .ic { font-size: 24px; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: #0e0b18; flex: none; }
+.ach.locked { opacity: .5; }
+.ach.locked .ic { filter: grayscale(1); }
+.ach b { display: block; font-size: .9rem; }
+.ach small { color: var(--muted); font-size: .78rem; display: block; }
+.cat { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+
+/* Estatísticas */
+.stats { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.stats td { padding: 5px 0; border-bottom: 1px solid var(--line); }
+.stats td:last-child { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.chart { width: 100%; height: 220px; display: block; }
+.elbars { display: flex; flex-direction: column; gap: 6px; }
+.elbar { display: grid; grid-template-columns: 90px 1fr 30px; gap: 8px; align-items: center; font-size: .85rem; font-weight: 700; }
+.elbar .bar { height: 10px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.kpi { background: var(--panel-2); border-radius: 12px; padding: 10px 12px; }
+.kpi b { display: block; font-family: var(--font-display); font-size: 1.4rem; font-weight: 400; }
+.kpi span { font-size: .78rem; color: var(--muted); font-weight: 700; }
+
+/* Loja */
+.shop { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.item.locked { opacity: .5; }
+.item .t { font-weight: 800; }
+
+/* Sobreposições */
+.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(10, 7, 18, .88); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 24px; max-width: 760px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.hero { text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.hero h1 { font-size: clamp(2rem, 6vw, 3.2rem); line-height: 1.05; background: linear-gradient(180deg, var(--ember-2), var(--ember)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero p { max-width: 56ch; margin: 0; color: var(--muted); }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.mode { background: var(--panel-2); border: 2px solid var(--line); border-radius: 14px; padding: 14px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.mode:hover { border-color: var(--ember); }
+.mode b { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; }
+.rank { font-family: var(--font-display); font-size: 5rem; line-height: 1; color: var(--gold); text-shadow: 0 4px 0 #6b4d16; }
+.somctl { position: absolute; z-index: 5; top: 10px; right: 16px; background: rgba(19, 15, 31, .86); border: 1px solid var(--line); border-radius: 14px; padding: 4px; }
+.hud { padding-right: 64px; }
+.toasts { position: fixed; right: 16px; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; max-width: calc(100vw - 32px); }
+.toast { background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--ember); border-radius: 12px; padding: 10px 14px; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: slide .25s ease-out; max-width: 340px; }
+.toast.ach { border-left-color: var(--gold); }
+.toast.bad { border-left-color: var(--bad); }
+.toast small { display: block; color: var(--muted); font-weight: 600; }
+.float { position: fixed; z-index: 70; pointer-events: none; font-weight: 800; color: var(--gold); font-size: 1.1rem; text-shadow: 0 2px 0 rgba(0,0,0,.6); animation: rise .9s ease-out forwards; }
+.lost-egg { position: fixed; z-index: 40; font-size: 46px; background: none; border: none; animation: bob .8s ease-in-out infinite; filter: drop-shadow(0 0 14px #ffe08a); }
+
+@keyframes pulse { 50% { opacity: .55; } }
+@keyframes glow { 50% { box-shadow: 0 0 0 2px var(--ring), 0 0 18px 4px rgba(255, 183, 3, .55); } }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+@keyframes wobble { 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
+@keyframes shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes slide { from { transform: translateX(30px); opacity: 0; } }
+@keyframes rise { to { transform: translateY(-50px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media (max-width: 560px) {
+  .brand { display: none; }
+  .top .wrap { gap: 6px 8px; padding-block: 8px; }
+  .res { padding: 3px 8px; }
+  .lvl { min-width: 0; flex: 1 1 110px; }
+  .toast { padding: 8px 12px; font-size: .9rem; }
+  .breedbox { grid-template-columns: 1fr; }
+  .heart { text-align: center; }
+  .battle { grid-template-columns: 1fr; }
+  .ladder { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+
+<header class="top" id="top"></header>
+<main class="stage" id="stage">
+  <div class="mapwrap" id="mapwrap"><div id="map"></div></div>
+  <div class="hud" id="hud"></div>
+  <div class="somctl" id="somctl"></div>
+</main>
+<div id="sheet"></div>
+<nav class="dock" id="tabs" aria-label="Seções do jogo"></nav>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div id="overlay"></div>
+<div id="lostEgg"></div>
+
+<script>
+/* AUDIO-START: cópia de audio/audio.js (sons e música sintetizados). Para atualizar, substitua o conteúdo até AUDIO-END. */
+/* =====================================================================
+   Dragões Relâmpago — Sons e Música
+   ---------------------------------------------------------------------
+   Tudo é sintetizado no navegador com a Web Audio API: nenhum arquivo
+   de áudio, nenhuma dependência. Expõe um único objeto global `Som`.
+
+   Uso rápido:
+     Som.play('coletar');                       // efeito sonoro
+     Som.play('ataque', { elemento: 'fogo' });  // efeito com opções
+     Som.musica('ilha');                        // troca a música (crossfade)
+     Som.musica(null);                          // para a música
+     Som.tensao(0.6);                           // 0..1, deixa a música da ilha tensa
+     Som.alternarMudo();  Som.volume(0.8);
+     Som.criarControles(elemento);              // botão de mudo + volumes
+
+   O áudio só começa depois do primeiro clique ou tecla (regra dos
+   navegadores). Pedidos de música feitos antes disso ficam guardados
+   e começam sozinhos no primeiro gesto. Nada é salvo em localStorage.
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  const AC = window.AudioContext || window.webkitAudioContext;
+
+  // ------------------------------------------------------------------
+  // Estado
+  // ------------------------------------------------------------------
+  const st = {
+    mudo: false,
+    volume: 0.8,      // geral
+    volMusica: 0.5,
+    volEfeitos: 0.85,
+    faixa: null,      // faixa pedida (mesmo antes do desbloqueio)
+    tensao: 0,
+    pausadoPeloJogo: false,
+  };
+  const ouvintes = [];
+  let ctx = null, master, busMusica, busEfeitos, reverb, revSend, ruido;
+  let ultimoTocado = {};
+
+  const m2f = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const escolha = (arr) => arr[(Math.random() * arr.length) | 0];
+
+  function avisar() { const e = estado(); ouvintes.forEach((fn) => { try { fn(e); } catch (_) {} }); }
+  function estado() {
+    return { mudo: st.mudo, volume: st.volume, volMusica: st.volMusica, volEfeitos: st.volEfeitos,
+      faixa: st.faixa, tensao: st.tensao, ativo: !!(ctx && ctx.state === 'running'), suportado: !!AC };
+  }
+
+  // ------------------------------------------------------------------
+  // Grafo de áudio
+  // ------------------------------------------------------------------
+  function iniciarContexto() {
+    if (ctx || !AC) return ctx;
+    ctx = new AC();
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 4;
+    comp.attack.value = 0.004; comp.release.value = 0.2;
+    master = ctx.createGain();
+    master.connect(comp); comp.connect(ctx.destination);
+    busMusica = ctx.createGain(); busMusica.connect(master);
+    busEfeitos = ctx.createGain(); busEfeitos.connect(master);
+
+    // reverb gerado (ruído com decaimento exponencial)
+    reverb = ctx.createConvolver();
+    const len = Math.floor(ctx.sampleRate * 2.2);
+    const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
+    }
+    reverb.buffer = ir;
+    revSend = ctx.createGain(); revSend.gain.value = 0.35;
+    revSend.connect(reverb); reverb.connect(master);
+
+    // ruído branco reaproveitado
+    ruido = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const nd = ruido.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+
+    aplicarVolumes(true);
+    return ctx;
+  }
+
+  function aplicarVolumes(imediato) {
+    if (!ctx) return;
+    const t = ctx.currentTime, tc = imediato ? 0.001 : 0.08;
+    master.gain.setTargetAtTime(st.mudo ? 0 : st.volume, t, tc);
+    busMusica.gain.setTargetAtTime(st.volMusica, t, tc);
+    busEfeitos.gain.setTargetAtTime(st.volEfeitos, t, tc);
+  }
+
+  function desbloquear() {
+    if (!AC) return;
+    iniciarContexto();
+    if (ctx.state === 'suspended' && !st.pausadoPeloJogo) ctx.resume().then(() => { iniciarMusicaSePreciso(); avisar(); });
+    else iniciarMusicaSePreciso();
+  }
+  ['pointerdown', 'keydown', 'touchend'].forEach((ev) =>
+    window.addEventListener(ev, desbloquear, { capture: true, passive: true }));
+
+  // O jogo pausa quando a aba fica oculta; o áudio acompanha.
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend();
+    else if (!st.pausadoPeloJogo) ctx.resume();
+  });
+
+  // ------------------------------------------------------------------
+  // Blocos de síntese. `at` é tempo absoluto do contexto.
+  // ------------------------------------------------------------------
+  function saida(dest, pan, rev) {
+    let n = dest;
+    if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; p.connect(dest); n = p; }
+    return { no: n, rev };
+  }
+
+  function envelope(g, at, a, dur, vol, curva) {
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.linearRampToValueAtTime(vol, at + a);
+    if (curva === 'sustenta') { g.gain.setValueAtTime(vol, at + Math.max(a, dur - 0.08)); g.gain.linearRampToValueAtTime(0.0001, at + dur); }
+    else g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  }
+
+  // Oscilador com envelope, glissando e filtro opcionais.
+  function tom(o) {
+    const at = o.at, dur = o.dur || 0.2;
+    const osc = ctx.createOscillator();
+    osc.type = o.tipo || 'sine';
+    osc.frequency.setValueAtTime(Math.min(o.f, 16000), at);
+    if (o.f2) {
+      if (o.lin) osc.frequency.linearRampToValueAtTime(o.f2, at + (o.glide || dur));
+      else osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f2), at + (o.glide || dur));
+    }
+    if (o.detune) osc.detune.value = o.detune;
+    let ult = osc;
+    if (o.filtro) {
+      const fl = ctx.createBiquadFilter();
+      fl.type = o.filtro; fl.frequency.setValueAtTime(o.ff || 1200, at); fl.Q.value = o.q || 0.7;
+      if (o.ff2) fl.frequency.exponentialRampToValueAtTime(o.ff2, at + dur);
+      osc.connect(fl); ult = fl;
+    }
+    const g = ctx.createGain();
+    envelope(g, at, o.a || 0.005, dur, o.vol || 0.2, o.curva);
+    ult.connect(g);
+    const s = saida(o.dest || busEfeitos, o.pan, o.rev);
+    g.connect(s.no);
+    if (o.rev) { const rg = ctx.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(revSend); }
+    if (o.vib) { // vibrato
+      const l = ctx.createOscillator(), lg = ctx.createGain();
+      l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1];
+      l.connect(lg); lg.connect(osc.frequency); l.start(at); l.stop(at + dur + 0.05);
+    }
+    osc.start(at); osc.stop(at + dur + 0.05);
+    return osc;
+  }
+
+  // Ruído filtrado com envelope.
+  function chiado(o) {
+    const at = o.at, dur = o.dur || 0.2;
+    const src = ctx.createBufferSource();
+    src.buffer = ruido; src.loop = true;
+    const fl = ctx.createBiquadFilter();
+    fl.type = o.filtro || 'bandpass'; fl.Q.value = o.q || 1;
+    fl.frequency.setValueAtTime(o.ff || 1500, at);
+    if (o.ff2) fl.frequency.exponentialRampToValueAtTime(o.ff2, at + (o.glide || dur));
+    const g = ctx.createGain();
+    envelope(g, at, o.a || 0.003, dur, o.vol || 0.2, o.curva);
+    src.connect(fl); fl.connect(g);
+    const s = saida(o.dest || busEfeitos, o.pan);
+    g.connect(s.no);
+    if (o.rev) { const rg = ctx.createGain(); rg.gain.value = o.rev; g.connect(rg); rg.connect(revSend); }
+    if (o.trem) { // tremolo (para tremores)
+      const l = ctx.createOscillator(), lg = ctx.createGain();
+      l.frequency.value = o.trem[0]; lg.gain.value = o.trem[1];
+      l.connect(lg); lg.connect(g.gain); l.start(at); l.stop(at + dur + 0.05);
+    }
+    src.start(at, Math.random() * 1.5); src.stop(at + dur + 0.05);
+  }
+
+  // Sino: parciais inarmônicas.
+  function sino(f, at, dur, vol, dest, rev) {
+    tom({ at, f, dur, vol, dest, rev, tipo: 'sine' });
+    if (f * 2.76 < 16000) tom({ at, f: f * 2.76, dur: dur * 0.5, vol: vol * 0.35, dest, rev });
+    if (f * 5.4 < 16000) tom({ at, f: f * 5.4, dur: dur * 0.25, vol: vol * 0.15, dest, rev });
+  }
+  function moeda(at, f, vol, pan) {
+    tom({ at, f, dur: 0.07, vol, tipo: 'square', filtro: 'lowpass', ff: 5000, pan });
+    tom({ at: at + 0.06, f: f * 1.335, dur: 0.22, vol: vol * 0.9, tipo: 'square', filtro: 'lowpass', ff: 5000, pan, rev: 0.15 });
+  }
+  function brilho(at, n, vol, base) {
+    for (let i = 0; i < n; i++) sino((base || 2000) * rnd(0.9, 2), at + i * rnd(0.02, 0.06), 0.25, vol * rnd(0.4, 1), busEfeitos, 0.4);
+  }
+  function arpejo(notas, at, passo, o) {
+    notas.forEach((m, i) => tom(Object.assign({ at: at + i * passo, f: m2f(m) }, o)));
+  }
+
+  // Rugido: serra com formantes + ruído + distorção.
+  let curvaDist = null;
+  function distorcao() {
+    if (curvaDist) return curvaDist;
+    const n = 1024; curvaDist = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; curvaDist[i] = (3 + 20) * x * 0.3 / (Math.PI + 20 * Math.abs(x)); }
+    return curvaDist;
+  }
+  function rugido(at, dur, grave, vol) {
+    const ws = ctx.createWaveShaper(); ws.curve = distorcao();
+    const g = ctx.createGain(); envelope(g, at, 0.12, dur, vol);
+    const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 600 * grave + 100; f1.Q.value = 2;
+    const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1400 * grave + 200; f2.Q.value = 3;
+    const mix = ctx.createGain(); mix.gain.value = 1;
+    ws.connect(f1); ws.connect(f2); f1.connect(mix); f2.connect(mix); mix.connect(g);
+    g.connect(busEfeitos);
+    const rg = ctx.createGain(); rg.gain.value = 0.5; g.connect(rg); rg.connect(revSend);
+    const base = 70 * grave + 30;
+    [0, 7, -5].forEach((dt, i) => {
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = dt * 3;
+      o.frequency.setValueAtTime(base, at);
+      o.frequency.linearRampToValueAtTime(base * 1.6, at + dur * 0.3);
+      o.frequency.linearRampToValueAtTime(base * 0.75, at + dur);
+      const lf = ctx.createOscillator(), lg = ctx.createGain();
+      lf.frequency.value = 23 + i * 4; lg.gain.value = base * 0.25;
+      lf.connect(lg); lg.connect(o.frequency);
+      o.connect(ws); o.start(at); o.stop(at + dur + 0.05); lf.start(at); lf.stop(at + dur + 0.05);
+    });
+    chiado({ at, dur, ff: 900 * grave + 300, q: 0.8, vol: vol * 0.6, a: 0.1 });
+  }
+
+  // ------------------------------------------------------------------
+  // Efeitos sonoros. Cada um recebe (t = agora, o = opções).
+  // ------------------------------------------------------------------
+  const ATAQUES = {
+    fogo(t, k) {
+      chiado({ at: t, dur: 0.45 * k, ff: 300, ff2: 2500, glide: 0.18, q: 0.9, vol: 0.45 * k, a: 0.04 });
+      chiado({ at: t + 0.15, dur: 0.4 * k, filtro: 'lowpass', ff: 900, ff2: 200, vol: 0.3 * k });
+      tom({ at: t, f: 90, f2: 50, dur: 0.4, vol: 0.25 * k });
+    },
+    agua(t, k) {
+      for (let i = 0; i < 6 * k; i++) { const f = rnd(300, 800); tom({ at: t + i * 0.045, f, f2: f * 2.2, dur: 0.08, vol: 0.18, tipo: 'sine' }); }
+      chiado({ at: t + 0.2, dur: 0.35 * k, filtro: 'lowpass', ff: 3000, ff2: 400, vol: 0.3 * k, rev: 0.3 });
+    },
+    planta(t, k) {
+      chiado({ at: t, dur: 0.18, filtro: 'highpass', ff: 1500, ff2: 6000, vol: 0.3 * k, a: 0.06 });
+      [0, 0.09, 0.16].forEach((d, i) => tom({ at: t + 0.12 + d, f: 260 + i * 70, f2: 180, dur: 0.12, vol: 0.25 * k, tipo: 'triangle' }));
+      chiado({ at: t + 0.12, dur: 0.3, ff: 4000, q: 2, vol: 0.12 * k });
+    },
+    terra(t, k) {
+      tom({ at: t, f: 130, f2: 35, dur: 0.5 * k, vol: 0.6 * Math.min(k, 1.3), tipo: 'sine' });
+      chiado({ at: t, dur: 0.4 * k, filtro: 'lowpass', ff: 500, ff2: 120, vol: 0.5 * k });
+      for (let i = 0; i < 4; i++) chiado({ at: t + 0.08 + i * 0.05, dur: 0.05, ff: rnd(800, 2000), q: 3, vol: 0.12 });
+    },
+    eletrico(t, k) {
+      const o = tom({ at: t, f: 900, f2: 300, dur: 0.3 * k, vol: 0.16 * k, tipo: 'sawtooth', filtro: 'highpass', ff: 600 });
+      const l = ctx.createOscillator(), lg = ctx.createGain();
+      l.type = 'square'; l.frequency.value = 55; lg.gain.value = 500;
+      l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + 0.35 * k);
+      chiado({ at: t, dur: 0.25 * k, filtro: 'highpass', ff: 3000, vol: 0.2 * k, trem: [40, 0.15] });
+      tom({ at: t + 0.02, f: 2400, f2: 1200, dur: 0.1, vol: 0.1, tipo: 'square' });
+    },
+    gelo(t, k) {
+      for (let i = 0; i < 7 * k; i++) sino(rnd(1800, 4200), t + i * 0.035, 0.3, 0.09, busEfeitos, 0.5);
+      chiado({ at: t, dur: 0.5 * k, filtro: 'highpass', ff: 5000, ff2: 9000, vol: 0.18 * k, a: 0.05 });
+      tom({ at: t, f: 1200, f2: 2400, dur: 0.25, vol: 0.06, tipo: 'triangle' });
+    },
+    metal(t, k) {
+      [520, 1310, 2030, 3150].forEach((f, i) => tom({ at: t, f: f * rnd(0.98, 1.02), dur: 0.6 * k / (i * 0.4 + 1), vol: 0.2 / (i + 1) * k, tipo: i ? 'sine' : 'triangle', rev: 0.3 }));
+      chiado({ at: t, dur: 0.06, ff: 3000, q: 1, vol: 0.4 * k });
+      tom({ at: t, f: 160, f2: 70, dur: 0.15, vol: 0.3 });
+    },
+    trevas(t, k) {
+      chiado({ at: t, dur: 0.6 * k, ff: 200, ff2: 900, glide: 0.5 * k, q: 3, vol: 0.35 * k, a: 0.35 * k, curva: 'sustenta' });
+      tom({ at: t, f: 95, f2: 45, dur: 0.7 * k, vol: 0.3 * k, tipo: 'sawtooth', filtro: 'lowpass', ff: 500, a: 0.2 });
+      tom({ at: t, f: 101, f2: 47, dur: 0.7 * k, vol: 0.25 * k, tipo: 'sawtooth', filtro: 'lowpass', ff: 500, a: 0.2, rev: 0.4 });
+    },
+    luz(t, k) {
+      arpejo([84, 88, 91, 95, 96], t, 0.035, { dur: 0.5, vol: 0.12 * k, tipo: 'sine', rev: 0.6 });
+      chiado({ at: t, dur: 0.4 * k, filtro: 'highpass', ff: 3000, ff2: 8000, vol: 0.15 * k, a: 0.1 });
+      tom({ at: t, f: 600, f2: 2400, dur: 0.3, vol: 0.08, tipo: 'triangle' });
+    },
+    neutro(t, k) {
+      chiado({ at: t, dur: 0.25 * k, ff: 600, ff2: 2000, q: 1, vol: 0.3 * k, a: 0.05 });
+      tom({ at: t + 0.1, f: 160, f2: 60, dur: 0.2, vol: 0.35 * k });
+    },
+  };
+  const elem = (o) => ATAQUES[normalizar(o && o.elemento)] || ATAQUES.neutro;
+  function normalizar(e) {
+    if (!e) return 'neutro';
+    e = String(e).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const mapa = { fire: 'fogo', water: 'agua', plant: 'planta', earth: 'terra', electric: 'eletrico', ice: 'gelo', dark: 'trevas', light: 'luz' };
+    return mapa[e] || e;
+  }
+
+  const RAR = { comum: 0, raro: 1, epico: 2, lendario: 3 };
+  const rar = (o) => RAR[normalizar(o && o.raridade)] ?? 0;
+
+  const SONS = {
+    // --- interface ---
+    clique(t) { tom({ at: t, f: 900, f2: 620, dur: 0.05, vol: 0.12, tipo: 'triangle' }); },
+    aba(t) { tom({ at: t, f: 660, dur: 0.04, vol: 0.08, tipo: 'sine' }); tom({ at: t + 0.03, f: 990, dur: 0.05, vol: 0.06 }); },
+    erro(t) { tom({ at: t, f: 190, dur: 0.1, vol: 0.14, tipo: 'square', filtro: 'lowpass', ff: 1200 }); tom({ at: t + 0.12, f: 140, dur: 0.16, vol: 0.14, tipo: 'square', filtro: 'lowpass', ff: 1000 }); },
+    pausar(t) { arpejo([76, 69, 64], t, 0.07, { dur: 0.12, vol: 0.12, tipo: 'triangle' }); },
+    retomar(t) { arpejo([64, 69, 76], t, 0.07, { dur: 0.12, vol: 0.12, tipo: 'triangle' }); },
+    confirmar(t) { arpejo([72, 79], t, 0.06, { dur: 0.15, vol: 0.12, tipo: 'triangle' }); },
+
+    // --- economia ---
+    coletar(t, o) {
+      const n = Math.max(1, Math.min(5, (o && o.quantidade) || 1));
+      for (let i = 0; i < n; i++) moeda(t + i * 0.05, 988 * Math.pow(1.06, i) * rnd(0.98, 1.03), 0.12 / Math.sqrt(n), rnd(-0.4, 0.4));
+    },
+    coletarTudo(t) {
+      for (let i = 0; i < 8; i++) moeda(t + i * 0.055, m2f(76 + [0, 2, 4, 7, 9, 12, 14, 16][i]), 0.07, rnd(-0.6, 0.6));
+      brilho(t + 0.45, 4, 0.08, 2500);
+    },
+    comprar(t) { moeda(t, 1046, 0.08); sino(m2f(91), t + 0.12, 0.6, 0.12, busEfeitos, 0.3); sino(m2f(96), t + 0.2, 0.7, 0.1, busEfeitos, 0.3); },
+    vender(t) { for (let i = 0; i < 4; i++) moeda(t + i * 0.07, 1318 / Math.pow(1.12, i), 0.07, rnd(-0.3, 0.3)); },
+    gemas(t) { arpejo([88, 93, 100], t, 0.05, { dur: 0.35, vol: 0.09, tipo: 'sine', rev: 0.5 }); brilho(t + 0.1, 3, 0.06, 3500); },
+
+    // --- fazenda ---
+    plantar(t) { tom({ at: t, f: 220, f2: 80, dur: 0.15, vol: 0.3 }); chiado({ at: t, dur: 0.12, ff: 2500, q: 1.5, vol: 0.12 }); },
+    colher(t) {
+      chiado({ at: t, dur: 0.12, ff: 3000, q: 1, vol: 0.15 });
+      tom({ at: t + 0.04, f: 500, f2: 950, dur: 0.1, vol: 0.2, tipo: 'sine' });
+      tom({ at: t + 0.1, f: 1100, dur: 0.12, vol: 0.08, tipo: 'triangle' });
+    },
+    colherTudo(t) { for (let i = 0; i < 4; i++) SONS.colher(t + i * 0.08); arpejo([72, 76, 79, 84], t + 0.35, 0.06, { dur: 0.2, vol: 0.1, tipo: 'triangle' }); },
+
+    // --- dragões ---
+    alimentar(t) {
+      for (let i = 0; i < 3; i++) { chiado({ at: t + i * 0.12, dur: 0.07, filtro: 'lowpass', ff: 900, vol: 0.3 }); tom({ at: t + i * 0.12, f: 180, f2: 120, dur: 0.06, vol: 0.15 }); }
+      tom({ at: t + 0.38, f: 600, f2: 900, dur: 0.12, vol: 0.12, tipo: 'triangle' });
+    },
+    nivelDragao(t) { arpejo([72, 76, 79, 84], t, 0.06, { dur: 0.18, vol: 0.13, tipo: 'triangle', rev: 0.2 }); brilho(t + 0.25, 4, 0.07, 2600); },
+    nivelJogador(t) {
+      const lat = { tipo: 'sawtooth', filtro: 'lowpass', ff: 2200, a: 0.02, rev: 0.4 };
+      arpejo([67, 72, 76], t, 0.11, Object.assign({ dur: 0.14, vol: 0.12 }, lat));
+      [79, 76, 72, 60].forEach((m) => tom(Object.assign({ at: t + 0.33, f: m2f(m), dur: 0.9, vol: 0.08, curva: 'sustenta', vib: [5, 3] }, lat)));
+      brilho(t + 0.35, 6, 0.08, 2400);
+    },
+
+    // --- chocadeira ---
+    ovoColocado(t) { tom({ at: t, f: 280, f2: 520, dur: 0.12, vol: 0.25 }); tom({ at: t + 0.1, f: 520, dur: 0.1, vol: 0.06, tipo: 'triangle' }); },
+    ovoPronto(t) { sino(m2f(88), t, 0.5, 0.14, busEfeitos, 0.4); sino(m2f(91), t + 0.14, 0.7, 0.14, busEfeitos, 0.4); },
+    chocar(t) {
+      [0, 0.18, 0.3].forEach((d) => chiado({ at: t + d, dur: 0.03, filtro: 'highpass', ff: 2500, vol: 0.35 }));
+      tom({ at: t + 0.45, f: 300, f2: 700, dur: 0.1, vol: 0.25 });
+      chiado({ at: t + 0.45, dur: 0.1, ff: 1800, q: 0.8, vol: 0.2 });
+      // piado do filhote
+      tom({ at: t + 0.6, f: 1400, f2: 2000, dur: 0.12, vol: 0.12, tipo: 'sine', vib: [28, 80] });
+      tom({ at: t + 0.76, f: 1600, f2: 2300, dur: 0.16, vol: 0.12, tipo: 'sine', vib: [28, 100] });
+    },
+    revelacao(t, o) {
+      const r = rar(o);
+      const notas = [[72, 76, 79, 84], [72, 76, 79, 83, 86], [69, 72, 76, 79, 83, 88], [62, 69, 74, 78, 81, 86, 90, 93]][r];
+      arpejo(notas, t, 0.07 - r * 0.008, { dur: 0.6 + r * 0.2, vol: 0.1, tipo: 'triangle', rev: 0.5 });
+      const acorde = notas.slice(-3).map((m) => m - 12);
+      acorde.forEach((m) => {
+        tom({ at: t + 0.3, f: m2f(m), dur: 1.2 + r * 0.6, vol: 0.05 + r * 0.01, tipo: 'sawtooth', filtro: 'lowpass', ff: 1500 + r * 500, a: 0.15, rev: 0.6, detune: -6 });
+        tom({ at: t + 0.3, f: m2f(m), dur: 1.2 + r * 0.6, vol: 0.05 + r * 0.01, tipo: 'sawtooth', filtro: 'lowpass', ff: 1500 + r * 500, a: 0.15, rev: 0.6, detune: 6 });
+      });
+      brilho(t + 0.3, 5 + r * 4, 0.07, 2200);
+      if (r >= 2) chiado({ at: t, dur: 0.8, filtro: 'highpass', ff: 1500, ff2: 8000, vol: 0.12, a: 0.5 });
+      if (r === 3) { // gongo + rugido curto para Lendário
+        [110, 220 * 1.41, 330 * 1.83].forEach((f, i) => tom({ at: t + 0.3, f, dur: 3 / (i + 1), vol: 0.15 / (i + 1), rev: 0.8 }));
+        rugido(t + 0.9, 0.9, 0.9, 0.12);
+      }
+    },
+    especieNova(t, o) { SONS.revelacao(t, o); },
+    cruzar(t) {
+      tom({ at: t, f: 330, f2: 660, dur: 0.9, vol: 0.12, tipo: 'sine', vib: [7, 15], a: 0.2 });
+      tom({ at: t, f: 1320, f2: 660, dur: 0.9, vol: 0.1, tipo: 'sine', vib: [9, 20], a: 0.2 });
+      chiado({ at: t, dur: 0.9, ff: 800, ff2: 4000, q: 4, vol: 0.12, a: 0.4 });
+      sino(m2f(84), t + 0.9, 0.9, 0.15, busEfeitos, 0.6);
+      brilho(t + 0.95, 5, 0.07, 2400);
+    },
+
+    // --- batalha ---
+    ataque(t, o) { elem(o)(t, 1); },
+    especial(t, o) {
+      tom({ at: t, f: 180, f2: 1400, dur: 0.32, vol: 0.12, tipo: 'sawtooth', filtro: 'lowpass', ff: 3000 });
+      chiado({ at: t, dur: 0.3, ff: 500, ff2: 5000, q: 3, vol: 0.12, a: 0.25, curva: 'sustenta' });
+      elem(o)(t + 0.3, 1.6);
+    },
+    acerto(t) { chiado({ at: t, dur: 0.1, filtro: 'lowpass', ff: 2500, vol: 0.35 }); tom({ at: t, f: 170, f2: 60, dur: 0.15, vol: 0.35 }); },
+    critico(t) {
+      SONS.acerto(t);
+      tom({ at: t, f: 220, f2: 50, dur: 0.3, vol: 0.4, tipo: 'triangle' });
+      sino(1760, t + 0.03, 0.4, 0.12, busEfeitos, 0.4);
+      chiado({ at: t, dur: 0.2, ff: 4000, q: 1, vol: 0.2 });
+    },
+    superEficaz(t) { arpejo([84, 91], t, 0.07, { dur: 0.2, vol: 0.12, tipo: 'square', filtro: 'lowpass', ff: 4000 }); },
+    poucoEficaz(t) { arpejo([67, 62], t, 0.09, { dur: 0.18, vol: 0.12, tipo: 'triangle', filtro: 'lowpass', ff: 700 }); },
+    nocaute(t) {
+      tom({ at: t, f: 700, f2: 90, dur: 0.6, vol: 0.13, tipo: 'square', filtro: 'lowpass', ff: 2000 });
+      tom({ at: t + 0.55, f: 120, f2: 40, dur: 0.35, vol: 0.4 });
+      chiado({ at: t + 0.55, dur: 0.3, filtro: 'lowpass', ff: 600, vol: 0.35 });
+    },
+    batalhaInicio(t) {
+      chiado({ at: t, dur: 0.5, ff: 400, ff2: 3000, q: 1, vol: 0.2, a: 0.4, curva: 'sustenta' });
+      const lat = { tipo: 'sawtooth', filtro: 'lowpass', ff: 2500, rev: 0.3 };
+      tom(Object.assign({ at: t + 0.5, f: m2f(57), dur: 0.5, vol: 0.12 }, lat));
+      tom(Object.assign({ at: t + 0.5, f: m2f(64), dur: 0.5, vol: 0.1 }, lat));
+      tom({ at: t + 0.5, f: 110, f2: 45, dur: 0.4, vol: 0.5 });
+    },
+    vitoria(t) {
+      const lat = { tipo: 'square', filtro: 'lowpass', ff: 3500, rev: 0.3 };
+      [[72, 0, 0.12], [76, 0.12, 0.12], [79, 0.24, 0.12], [84, 0.36, 0.3], [79, 0.7, 0.12], [84, 0.82, 0.8]].forEach(([m, d, du]) =>
+        tom(Object.assign({ at: t + d, f: m2f(m), dur: du, vol: 0.1 }, lat)));
+      [60, 64, 67].forEach((m) => tom({ at: t + 0.82, f: m2f(m), dur: 0.9, vol: 0.07, tipo: 'triangle', rev: 0.4, curva: 'sustenta' }));
+      brilho(t + 0.85, 6, 0.07, 2400);
+    },
+    derrota(t) {
+      [[67, 0, 0.3], [63, 0.3, 0.3], [60, 0.6, 0.3], [55, 0.9, 1.0]].forEach(([m, d, du]) =>
+        tom({ at: t + d, f: m2f(m), dur: du, vol: 0.13, tipo: 'triangle', filtro: 'lowpass', ff: 1500, vib: [5, 4], curva: 'sustenta', rev: 0.4 }));
+      tom({ at: t + 0.9, f: m2f(43), dur: 1.0, vol: 0.12, tipo: 'sawtooth', filtro: 'lowpass', ff: 400, curva: 'sustenta' });
+    },
+
+    // --- progresso ---
+    conquista(t) {
+      arpejo([76, 80, 83, 88], t, 0.06, { dur: 0.5, vol: 0.12, tipo: 'triangle', rev: 0.5 });
+      [64, 68, 71].forEach((m) => tom({ at: t + 0.24, f: m2f(m), dur: 0.9, vol: 0.05, tipo: 'sawtooth', filtro: 'lowpass', ff: 2000, a: 0.05, rev: 0.5 }));
+      sino(m2f(100), t + 0.24, 1.0, 0.1, busEfeitos, 0.6);
+      brilho(t + 0.3, 6, 0.07, 3000);
+    },
+    missao(t) { moeda(t, 988, 0.07); sino(m2f(79), t + 0.1, 0.4, 0.12, busEfeitos, 0.3); sino(m2f(84), t + 0.22, 0.6, 0.12, busEfeitos, 0.3); },
+
+    // --- eventos aleatórios ---
+    evento(t) {
+      const lat = { tipo: 'sawtooth', filtro: 'lowpass', ff: 1800, a: 0.06, rev: 0.4, curva: 'sustenta' };
+      tom(Object.assign({ at: t, f: m2f(67), dur: 0.25, vol: 0.1 }, lat)); tom(Object.assign({ at: t, f: m2f(74), dur: 0.25, vol: 0.08 }, lat));
+      tom(Object.assign({ at: t + 0.28, f: m2f(72), dur: 0.6, vol: 0.1 }, lat)); tom(Object.assign({ at: t + 0.28, f: m2f(79), dur: 0.6, vol: 0.08 }, lat));
+    },
+    chuvaOuro(t) {
+      SONS.evento(t);
+      for (let i = 0; i < 18; i++) moeda(t + 0.4 + i * rnd(0.04, 0.09), rnd(900, 2000), 0.05, rnd(-0.8, 0.8));
+    },
+    colheitaFarta(t) { SONS.evento(t); arpejo([72, 74, 76, 79, 81, 84], t + 0.45, 0.06, { dur: 0.25, vol: 0.1, tipo: 'triangle' }); },
+    ovoPerdido(t) {
+      tom({ at: t, f: 400, f2: 1200, dur: 0.5, vol: 0.12, tipo: 'sine', vib: [8, 40], a: 0.1 });
+      sino(m2f(88), t + 0.45, 0.6, 0.1, busEfeitos, 0.6); sino(m2f(95), t + 0.6, 0.8, 0.08, busEfeitos, 0.6);
+    },
+    ovoPego(t) { SONS.ovoColocado(t); brilho(t + 0.05, 4, 0.08, 2500); },
+    dragaoSelvagem(t) { SONS.evento(t); rugido(t + 0.5, 1.0, 1.1, 0.32); },
+    mercador(t) {
+      [0, 0.1, 0.2].forEach((d, i) => sino(m2f(91 + i * 2), t + d, 0.3, 0.08, busEfeitos, 0.3));
+      arpejo([67, 71, 74, 79], t + 0.35, 0.08, { dur: 0.25, vol: 0.09, tipo: 'triangle', rev: 0.3 });
+    },
+
+    // --- Ancestral ---
+    // intensidade 0..1: use 0.25 (5 min), 0.5 (2 min), 0.75 (1 min), 1 (30 s)
+    tremor(t, o) {
+      const k = (o && o.intensidade != null) ? o.intensidade : 0.5;
+      const dur = 1.4 + k * 1.6;
+      chiado({ at: t, dur, filtro: 'lowpass', ff: 90 + k * 80, vol: 0.5 + k * 0.4, a: 0.3, trem: [6 + k * 6, 0.3] });
+      tom({ at: t, f: 42, f2: 36, dur, vol: 0.35 + k * 0.3, a: 0.3, vib: [5, 3] });
+      for (let i = 0; i < 3 + k * 6; i++) chiado({ at: t + rnd(0.2, dur - 0.2), dur: 0.08, ff: rnd(500, 1500), q: 2, vol: 0.08 + k * 0.06 });
+    },
+    rugido(t, o) { rugido(t, (o && o.duracao) || 1.2, (o && o.grave) || 1, 0.38); },
+    despertar(t) {
+      SONS.tremor(t, { intensidade: 1 });
+      rugido(t + 0.8, 2.4, 0.6, 0.26);
+      [55, 82.4, 110, 164.8].forEach((f, i) => tom({ at: t + 0.8, f, dur: 4 - i * 0.6, vol: 0.18 / (i + 1), tipo: 'sine', rev: 0.9 }));
+      [38, 45, 50].forEach((m) => tom({ at: t + 1.2, f: m2f(m), dur: 3, vol: 0.06, tipo: 'sawtooth', filtro: 'lowpass', ff: 600, a: 0.6, rev: 0.6, curva: 'sustenta' }));
+    },
+    soproAncestral(t) { ATAQUES.trevas(t, 2); ATAQUES.fogo(t + 0.2, 1.6); rugido(t, 0.8, 0.7, 0.14); },
+
+    // --- telas finais ---
+    finalVitoria(t) {
+      const lat = { tipo: 'sawtooth', filtro: 'lowpass', ff: 2600, a: 0.03, rev: 0.5 };
+      [[60, 0, 0.2], [67, 0.2, 0.2], [72, 0.4, 0.4], [71, 0.8, 0.2], [72, 1.0, 0.2], [76, 1.2, 0.2], [79, 1.4, 1.6]].forEach(([m, d, du]) =>
+        tom(Object.assign({ at: t + d, f: m2f(m), dur: du, vol: 0.1, vib: du > 1 ? [5, 4] : null }, lat)));
+      [48, 55, 64, 67, 72].forEach((m) => tom(Object.assign({ at: t + 1.4, f: m2f(m), dur: 1.8, vol: 0.05, curva: 'sustenta' }, lat)));
+      tom({ at: t + 1.4, f: 65, f2: 40, dur: 0.6, vol: 0.5 });
+      brilho(t + 1.4, 12, 0.07, 2200);
+    },
+    finalDerrota(t) {
+      [[62, 0, 0.5], [60, 0.5, 0.5], [58, 1.0, 0.5], [57, 1.5, 1.6]].forEach(([m, d, du]) =>
+        tom({ at: t + d, f: m2f(m), dur: du, vol: 0.12, tipo: 'sawtooth', filtro: 'lowpass', ff: 1200, a: 0.05, vib: [4, 4], rev: 0.6, curva: 'sustenta' }));
+      [38, 45, 49].forEach((m) => tom({ at: t + 1.5, f: m2f(m), dur: 2.2, vol: 0.07, tipo: 'sawtooth', filtro: 'lowpass', ff: 500, a: 0.3, rev: 0.6, curva: 'sustenta' }));
+      rugido(t + 1.6, 1.6, 0.6, 0.1);
+    },
+  };
+
+  // Espaçamento mínimo entre repetições do mesmo som (ms), para cliques em rajada.
+  const INTERVALO = { coletar: 45, colher: 45, clique: 30, acerto: 40, aba: 40, plantar: 40, erro: 120, tremor: 800 };
+
+  function play(nome, o) {
+    if (!AC || st.mudo || st.volEfeitos <= 0) return false;
+    const fn = SONS[nome];
+    if (!fn) { console.warn('[Som] efeito desconhecido:', nome); return false; }
+    iniciarContexto();
+    if (ctx.state !== 'running') return false;
+    const agora = performance.now(), min = INTERVALO[nome] || 0;
+    if (min && ultimoTocado[nome] && agora - ultimoTocado[nome] < min) return false;
+    ultimoTocado[nome] = agora;
+    try { fn(ctx.currentTime + 0.01, o || {}); } catch (e) { console.warn('[Som]', nome, e); }
+    return true;
+  }
+
+  // ------------------------------------------------------------------
+  // Música: sequenciador em semicolcheias com agendamento antecipado.
+  // ------------------------------------------------------------------
+  const I = { // instrumentos da música
+    pluck(f, at, dur, vol, out) { tom({ at, f, dur, vol, tipo: 'triangle', filtro: 'lowpass', ff: 3000, ff2: 600, dest: out }); },
+    sino(f, at, dur, vol, out) { tom({ at, f, dur, vol, dest: out, rev: 0.5 }); tom({ at, f: f * 3, dur: dur * 0.3, vol: vol * 0.25, dest: out, rev: 0.5 }); },
+    epiano(f, at, dur, vol, out) { tom({ at, f, dur, vol, dest: out, rev: 0.3 }); tom({ at, f: f * 2, dur: dur * 0.4, vol: vol * 0.3, tipo: 'triangle', dest: out }); },
+    lead(f, at, dur, vol, out, tipo) { tom({ at, f, dur, vol, tipo: tipo || 'square', filtro: 'lowpass', ff: 2600, a: 0.01, dest: out, rev: 0.25, curva: 'sustenta', vib: dur > 0.3 ? [5.5, 4] : null }); },
+    trompa(f, at, dur, vol, out) {
+      tom({ at, f, dur, vol, tipo: 'sawtooth', filtro: 'lowpass', ff: 900, a: 0.08, dest: out, rev: 0.6, curva: 'sustenta', vib: [4.5, 3] });
+      tom({ at, f, dur, vol: vol * 0.7, tipo: 'sawtooth', filtro: 'lowpass', ff: 900, a: 0.08, dest: out, detune: 9, curva: 'sustenta' });
+    },
+    baixo(f, at, dur, vol, out, ff) { tom({ at, f, dur, vol, tipo: 'sawtooth', filtro: 'lowpass', ff: ff || 700, q: 4, dest: out, curva: 'sustenta', a: 0.01 }); },
+    baixoSuave(f, at, dur, vol, out) { tom({ at, f, dur, vol, tipo: 'triangle', dest: out, curva: 'sustenta', a: 0.01 }); },
+    pad(notas, at, dur, vol, out, ff) {
+      notas.forEach((m) => [-7, 7].forEach((dt) =>
+        tom({ at, f: m2f(m), dur, vol, tipo: 'sawtooth', filtro: 'lowpass', ff: ff || 1100, a: dur * 0.3, detune: dt, dest: out, rev: 0.5, curva: 'sustenta' })));
+    },
+    bumbo(at, vol, out) { tom({ at, f: 150, f2: 42, glide: 0.12, dur: 0.3, vol, dest: out }); },
+    caixa(at, vol, out) { chiado({ at, dur: 0.14, ff: 1800, q: 0.7, vol, dest: out }); tom({ at, f: 220, f2: 150, dur: 0.08, vol: vol * 0.6, tipo: 'triangle', dest: out }); },
+    chimbal(at, vol, out, aberto) { chiado({ at, dur: aberto ? 0.18 : 0.04, filtro: 'highpass', ff: 7500, vol, dest: out }); },
+    taiko(at, vol, out) { tom({ at, f: 95, f2: 48, glide: 0.2, dur: 0.6, vol, dest: out, rev: 0.4 }); chiado({ at, dur: 0.08, filtro: 'lowpass', ff: 500, vol: vol * 0.5, dest: out }); },
+    coracao(at, vol, out) { tom({ at, f: 70, f2: 40, dur: 0.18, vol, dest: out }); },
+  };
+
+  const _ = null;
+  const FAIXAS = {
+    // Ilha: alegre, Dó maior pentatônico. Responde a Som.tensao().
+    ilha: {
+      bpm: 112, compassos: 16,
+      acordes: [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]],
+      raiz: [36, 33, 41, 43],
+      melodia: [
+        [76, _, 79, 76, 72, _, 74, 76], [72, _, 69, _, 72, 74, 76, _],
+        [81, _, 79, 76, 77, _, 76, 74], [74, _, 79, _, 74, 71, 74, _],
+        [76, 79, 84, _, 83, 81, 79, _], [81, _, 76, _, 79, 76, 72, _],
+        [77, _, 81, _, 79, 77, 76, 74], [74, _, _, 71, 74, _, _, _],
+      ],
+      passo(s, at, out, sem) {
+        const c = Math.floor(s / 16) % this.compassos, p = s % 16, ac = c % 4;
+        const tens = st.tensao;
+        const notas = this.acordes[ac];
+        if (p === 0) I.pad(notas.map((m) => m - 12), at, sem * 16, 0.016 * (1 - tens * 0.4), out, 900 - tens * 300);
+        if (p % 8 === 0) I.baixoSuave(m2f(this.raiz[ac]), at, sem * 3, 0.16, out);
+        if (p === 6 || p === 14) I.baixoSuave(m2f(this.raiz[ac] + 7), at, sem * 1.5, 0.1, out);
+        if (p % 2 === 0) { // arpejo em colcheias
+          const ordem = [0, 1, 2, 1][(p / 2) % 4];
+          I.pluck(m2f(notas[ordem] + 12), at, sem * 2, 0.045, out);
+        }
+        // melodia nos compassos 0–7, sinos espaçados nos 8–15
+        if (p % 2 === 0) {
+          if (c < 8) { const m = this.melodia[c][p / 2]; if (m) I.sino(m2f(m), at, sem * 3, 0.07, out); }
+          else if (p % 4 === 0 && (p === 0 || Math.random() < 0.4)) I.sino(m2f(escolha(notas) + 24), at, sem * 4, 0.035, out);
+        }
+        // percussão leve
+        if (p % 4 === 2) I.chimbal(at, 0.03, out);
+        if (p === 0 || p === 10) I.bumbo(at, 0.18 * (1 - tens * 0.5), out);
+        // tensão: batimento grave e drone
+        if (tens > 0.05) {
+          if (p === 0 || p === 3 || p === 8 || p === 11) I.coracao(at, 0.35 * tens, out);
+          if (p === 0) tom({ at, f: m2f(this.raiz[ac] - 12), dur: sem * 16, vol: 0.06 * tens, tipo: 'sawtooth', filtro: 'lowpass', ff: 220, dest: out, curva: 'sustenta', a: 0.3 });
+          if (tens > 0.6 && p % 4 === 0) I.chimbal(at, 0.04 * tens, out);
+        }
+      },
+    },
+
+    // Arena: rápida e heroica, Lá menor.
+    batalha: {
+      bpm: 144, compassos: 16,
+      acordes: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62], [57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 56, 59]],
+      raiz: [45, 41, 48, 43, 45, 41, 43, 40],
+      melodia: [
+        [69, _, 72, 76, 74, 72, 71, 72], [69, _, _, 65, 69, 72, 77, 76],
+        [76, _, 79, 76, 72, _, 76, 79], [79, 77, 76, 74, 71, _, 74, _],
+        [81, _, 79, 76, 72, _, 76, 81], [77, _, 76, 72, 69, 72, 77, _],
+        [79, _, 77, 74, 71, 74, 79, _], [80, _, 76, _, 71, _, 68, _],
+      ],
+      passo(s, at, out, sem) {
+        const c = Math.floor(s / 16) % this.compassos, p = s % 16, ac = c % 8;
+        const notas = this.acordes[ac], r = this.raiz[ac];
+        if (p === 0) I.pad(notas, at, sem * 16, 0.012, out, 1600);
+        if (p % 2 === 0) I.baixo(m2f(p % 4 === 0 ? r : r + 12), at, sem * 1.6, 0.11, out, 900);
+        if (c >= 8) I.pluck(m2f(notas[[0, 1, 2, 1][p % 4]] + 12), at, sem, 0.035, out);
+        if (p % 2 === 0) { const m = this.melodia[ac][p / 2]; if (m) I.lead(m2f(m), at, sem * 1.8, c >= 8 ? 0.045 : 0.055, out); }
+        if (p === 0 || p === 8 || p === 10) I.bumbo(at, 0.32, out);
+        if (p === 4 || p === 12) I.caixa(at, 0.16, out);
+        if (p % 2 === 0) I.chimbal(at, 0.035, out, p % 4 === 2);
+        if (c % 4 === 3 && p >= 12) I.caixa(at, 0.08 + (p - 12) * 0.02, out);
+      },
+    },
+
+    // Invasão Final: sombria e pesada, Ré menor com toque frígio.
+    invasao: {
+      bpm: 84, compassos: 16,
+      acordes: [[50, 53, 57], [46, 50, 53], [43, 46, 50], [45, 49, 52], [50, 53, 57], [51, 55, 58], [48, 52, 55], [45, 49, 52]],
+      raiz: [38, 34, 31, 33, 38, 39, 36, 33],
+      trompa: [[62, _, 65, 64], [62, _, _, _], [67, _, 65, 62], [61, _, 64, _], [69, _, 70, 69], [67, _, 63, _], [64, 65, 67, 64], [61, _, _, _]],
+      passo(s, at, out, sem) {
+        const c = Math.floor(s / 16) % this.compassos, p = s % 16, ac = c % 8;
+        const notas = this.acordes[ac], r = this.raiz[ac];
+        if (p === 0) {
+          I.pad(notas.map((m) => m + 12), at, sem * 16, 0.014, out, 1000);
+          tom({ at, f: m2f(r), dur: sem * 16, vol: 0.08, tipo: 'sawtooth', filtro: 'lowpass', ff: 260, q: 3, dest: out, curva: 'sustenta', a: 0.2 });
+          tom({ at, f: m2f(r - 12), dur: sem * 16, vol: 0.1, tipo: 'sine', dest: out, curva: 'sustenta', a: 0.2 });
+        }
+        if (p === 0 || p === 8) I.taiko(at, 0.5, out);
+        if (p === 3 || p === 6 || p === 11) I.taiko(at, 0.22, out);
+        if (c % 2 === 1 && (p === 14 || p === 15)) I.taiko(at, 0.3, out);
+        if (p % 4 === 0) { const m = this.trompa[ac][p / 4]; if (m) I.trompa(m2f(c >= 8 ? m + 12 : m), at, sem * (this.trompa[ac][p / 4 + 1] === _ ? 7.5 : 3.8), 0.05, out); }
+        if (c >= 8) { // ostinato de cordas na segunda metade
+          const ost = [notas[0] + 24, notas[2] + 12, notas[1] + 12, notas[2] + 12];
+          tom({ at, f: m2f(ost[p % 4]), dur: sem * 0.9, vol: 0.022, tipo: 'sawtooth', filtro: 'lowpass', ff: 2000, dest: out });
+        }
+        if (p % 4 === 2) I.chimbal(at, 0.02, out);
+      },
+    },
+
+    // Placar / tela final: calma e reflexiva, Fá maior.
+    placar: {
+      bpm: 88, compassos: 8,
+      acordes: [[53, 57, 60, 64], [57, 60, 64, 67], [58, 62, 65, 69], [60, 64, 67, 70]],
+      raiz: [41, 45, 46, 48],
+      passo(s, at, out, sem) {
+        const c = Math.floor(s / 16) % this.compassos, p = s % 16, ac = c % 4;
+        const notas = this.acordes[ac];
+        if (p === 0 || p === 6 || p === 10) notas.forEach((m) => I.epiano(m2f(m), at, sem * 5, 0.025, out));
+        if (p === 0 || p === 8) I.baixoSuave(m2f(this.raiz[ac]), at, sem * 7, 0.12, out);
+        if (p % 4 === 0 && Math.random() < 0.55) I.sino(m2f(escolha(notas) + 24), at, sem * 5, 0.04, out);
+        if (p === 0) I.pad(notas.map((m) => m - 12), at, sem * 16, 0.008, out, 800);
+      },
+    },
+  };
+
+  const mus = { atual: null, timer: null };
+
+  function iniciarMusicaSePreciso() {
+    if (!ctx || ctx.state !== 'running') return;
+    const quer = st.faixa;
+    if ((mus.atual && mus.atual.nome) === quer) return;
+    trocarFaixa(quer);
+  }
+
+  function trocarFaixa(nome) {
+    const t = ctx.currentTime;
+    if (mus.atual) { // fade-out da anterior; as notas já agendadas terminam nesse ganho
+      const velha = mus.atual;
+      velha.ganho.gain.cancelScheduledValues(t);
+      velha.ganho.gain.setValueAtTime(velha.ganho.gain.value, t);
+      velha.ganho.gain.linearRampToValueAtTime(0, t + 1.2);
+      setTimeout(() => velha.ganho.disconnect(), 1800);
+      mus.atual = null;
+    }
+    if (!nome || !FAIXAS[nome]) { pararTimer(); return; }
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 1.0);
+    g.connect(busMusica);
+    mus.atual = { nome, faixa: FAIXAS[nome], ganho: g, passo: 0, prox: t + 0.1 };
+    if (!mus.timer) mus.timer = setInterval(agendar, 25);
+  }
+  function pararTimer() { if (mus.timer) { clearInterval(mus.timer); mus.timer = null; } }
+
+  function agendar() {
+    const a = mus.atual;
+    if (!a || !ctx || ctx.state !== 'running') return;
+    const sem = 60 / a.faixa.bpm / 4;
+    // se o relógio pulou (aba voltou), não tenta recuperar notas perdidas
+    if (a.prox < ctx.currentTime - 0.2) a.prox = ctx.currentTime + 0.05;
+    while (a.prox < ctx.currentTime + 0.15) {
+      try { a.faixa.passo(a.passo, a.prox, a.ganho, sem); } catch (e) { console.warn('[Som] música', e); }
+      a.prox += sem; a.passo++;
+    }
+  }
+
+  function musica(nome) {
+    if (nome && !FAIXAS[nome]) { console.warn('[Som] faixa desconhecida:', nome); return; }
+    st.faixa = nome || null;
+    if (ctx && ctx.state === 'running') trocarFaixa(st.faixa);
+    avisar();
+  }
+
+  // ------------------------------------------------------------------
+  // Controles prontos (botão de mudo + dois volumes)
+  // ------------------------------------------------------------------
+  let cssInjetado = false;
+  function injetarCss() {
+    if (cssInjetado) return; cssInjetado = true;
+    const s = document.createElement('style');
+    s.textContent = `
+.som-ctrl{display:inline-flex;align-items:center;gap:8px;font:13px/1.2 system-ui,sans-serif;color:inherit}
+.som-ctrl button{all:unset;cursor:pointer;font-size:18px;width:32px;height:32px;display:grid;place-items:center;border-radius:8px;background:rgba(127,127,127,.18)}
+.som-ctrl button:hover{background:rgba(127,127,127,.3)}
+.som-ctrl button:focus-visible{outline:2px solid currentColor}
+.som-ctrl label{display:inline-flex;align-items:center;gap:4px;opacity:.9}
+.som-ctrl input[type=range]{width:80px;accent-color:#f5a623}
+.som-ctrl.som-compacto label{display:none}
+.som-ctrl.som-compacto:hover label,.som-ctrl.som-compacto:focus-within label{display:inline-flex}`;
+    document.head.appendChild(s);
+  }
+
+  function criarControles(alvo, opcoes) {
+    injetarCss();
+    const el = document.createElement('div');
+    el.className = 'som-ctrl' + (opcoes && opcoes.compacto ? ' som-compacto' : '');
+    el.innerHTML = `<button type="button" data-som="mudo" aria-label="Som ligado"></button>
+<label title="Música">🎵<input type="range" min="0" max="100" data-som="musica" aria-label="Volume da música"></label>
+<label title="Efeitos">💥<input type="range" min="0" max="100" data-som="efeitos" aria-label="Volume dos efeitos"></label>`;
+    const b = el.querySelector('[data-som=mudo]'), rm = el.querySelector('[data-som=musica]'), re = el.querySelector('[data-som=efeitos]');
+    const sync = (e) => {
+      b.textContent = e.mudo ? '🔇' : '🔊';
+      b.setAttribute('aria-label', e.mudo ? 'Som desligado (clique para ligar)' : 'Som ligado (clique para desligar)');
+      b.title = (e.mudo ? 'Ligar som' : 'Desligar som') + ' (M)';
+      if (document.activeElement !== rm) rm.value = Math.round(e.volMusica * 100);
+      if (document.activeElement !== re) re.value = Math.round(e.volEfeitos * 100);
+    };
+    // pointerdown não deve propagar para o ouvinte global do jogo
+    ['pointerdown', 'pointerup', 'click'].forEach((ev) => el.addEventListener(ev, (e) => e.stopPropagation()));
+    b.addEventListener('click', () => alternarMudo());
+    rm.addEventListener('input', () => volumeMusica(rm.value / 100));
+    re.addEventListener('input', () => volumeEfeitos(re.value / 100));
+    re.addEventListener('change', () => play('clique'));
+    aoMudar(sync); sync(estado());
+    if (alvo) alvo.appendChild(el);
+    return el;
+  }
+
+  // ------------------------------------------------------------------
+  // API pública
+  // ------------------------------------------------------------------
+  function mudo(v) { st.mudo = !!v; aplicarVolumes(); avisar(); }
+  function alternarMudo() { mudo(!st.mudo); if (!st.mudo) desbloquear(); return st.mudo; }
+  const lim = (v) => Math.max(0, Math.min(1, +v || 0));
+  function volume(v) { if (v === undefined) return st.volume; st.volume = lim(v); aplicarVolumes(); avisar(); }
+  function volumeMusica(v) { if (v === undefined) return st.volMusica; st.volMusica = lim(v); aplicarVolumes(); avisar(); }
+  function volumeEfeitos(v) { if (v === undefined) return st.volEfeitos; st.volEfeitos = lim(v); aplicarVolumes(); avisar(); }
+  function tensao(v) { if (v === undefined) return st.tensao; st.tensao = lim(v); avisar(); }
+  function pausar() { st.pausadoPeloJogo = true; if (ctx) ctx.suspend(); }
+  function retomar() { st.pausadoPeloJogo = false; if (ctx && !document.hidden) ctx.resume().then(iniciarMusicaSePreciso); }
+  function aoMudar(fn) { ouvintes.push(fn); return () => { const i = ouvintes.indexOf(fn); if (i >= 0) ouvintes.splice(i, 1); }; }
+  function ligarTeclaM() {
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.altKey && !/INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) alternarMudo();
+    });
+  }
+
+  window.Som = {
+    play, musica, tensao, pausar, retomar,
+    mudo, alternarMudo, volume, volumeMusica, volumeEfeitos,
+    estado, aoMudar, criarControles, ligarTeclaM, desbloquear,
+    efeitos: Object.keys(SONS), faixas: Object.keys(FAIXAS),
+    elementos: Object.keys(ATAQUES),
+  };
+})();
+
+/* AUDIO-END */
+</script>
+<script>
+'use strict';
+// ============================================================
+// DADOS DO JOGO (DATA-START) — tabelas lidas também pelos docs
+// ============================================================
+const EL = {
+  fogo:     { n: 'Fogo',     i: '🔥', c: '#ff6b35', pre: 'Piro',   suf: 'flar',    pn: 'Dragão de Fogo',   unlock: 1, cost: 100 },
+  agua:     { n: 'Água',     i: '💧', c: '#3aa0ff', pre: 'Hidro',  suf: 'maris',   pn: 'Dragão de Água',   unlock: 1, cost: 150 },
+  planta:   { n: 'Planta',   i: '🌿', c: '#4cc95a', pre: 'Fito',   suf: 'folius',  pn: 'Dragão de Planta', unlock: 1, cost: 150 },
+  terra:    { n: 'Terra',    i: '🪨', c: '#b8875a', pre: 'Geo',    suf: 'petrus',  pn: 'Dragão de Terra',  unlock: 2, cost: 250 },
+  eletrico: { n: 'Elétrico', i: '⚡', c: '#ffd23f', pre: 'Eletro', suf: 'voltar',  pn: 'Dragão Elétrico',  unlock: 3, cost: 600 },
+  gelo:     { n: 'Gelo',     i: '❄️', c: '#9be7ff', pre: 'Crio',   suf: 'glacius', pn: 'Dragão de Gelo',   unlock: 4, cost: 900 },
+  metal:    { n: 'Metal',    i: '⚙️', c: '#a7b1c2', pre: 'Ferro',  suf: 'ferrum',  pn: 'Dragão de Metal',  unlock: 6, cost: 2500 },
+  trevas:   { n: 'Trevas',   i: '🌑', c: '#7b4fd0', pre: 'Umbro',  suf: 'noctis',  pn: 'Dragão das Trevas', unlock: 8, cost: 6000 },
+  luz:      { n: 'Luz',      i: '✨', c: '#fff0a0', pre: 'Lumo',   suf: 'lumen',   pn: 'Dragão de Luz',    unlock: 8, cost: 6000 },
+};
+const EL_KEYS = Object.keys(EL);
+const SPECIAL_EL = ['metal', 'trevas', 'luz'];
+// Atacante -> elementos contra os quais é forte (dano x1,5). O inverso causa x0,7.
+const STRONG = {
+  fogo: ['planta', 'gelo', 'metal'],
+  agua: ['fogo', 'terra'],
+  planta: ['agua', 'terra'],
+  terra: ['eletrico', 'fogo', 'metal'],
+  eletrico: ['agua', 'metal'],
+  gelo: ['planta', 'terra'],
+  metal: ['gelo', 'luz'],
+  trevas: ['luz', 'eletrico'],
+  luz: ['trevas', 'gelo'],
+};
+const RARITY = {
+  C: { n: 'Comum',    rv: 1, gps: 1,   hp: 100, atk: 20, egg: 8 },
+  R: { n: 'Raro',     rv: 2, gps: 2.5, hp: 125, atk: 25, egg: 15 },
+  E: { n: 'Épico',    rv: 3, gps: 6,   hp: 160, atk: 33, egg: 25 },
+  L: { n: 'Lendário', rv: 5, gps: 15,  hp: 230, atk: 46, egg: 40 },
+};
+const LEGENDS = [
+  { k: 'eclipse',    n: 'Eclipse',     els: ['luz', 'trevas'],     ch: 0.25 },
+  { k: 'aurora',     n: 'Aurora',      els: ['gelo', 'luz'],       ch: 0.20 },
+  { k: 'tita',       n: 'Titã de Aço', els: ['terra', 'metal'],    ch: 0.18 },
+  { k: 'tempestade', n: 'Tempestade',  els: ['agua', 'eletrico'],  ch: 0.15 },
+  { k: 'vulcano',    n: 'Vulcano',     els: ['fogo', 'terra'],     ch: 0.12 },
+];
+const CROPS = {
+  trigo:   { n: 'Trigo',      i: '🌾', dur: 5,  food: 12,  cost: 10,  lvl: 1 },
+  milho:   { n: 'Milho',      i: '🌽', dur: 20, food: 60,  cost: 40,  lvl: 2 },
+  abobora: { n: 'Abóbora',    i: '🎃', dur: 45, food: 180, cost: 120, lvl: 4 },
+  pitaya:  { n: 'Fruta-dragão', i: '🍇', dur: 90, food: 520, cost: 350, lvl: 7 },
+};
+const MODES = {
+  rapido: { n: 'Rápida', dur: 600,  d: 'O Ancestral desperta em 10 minutos.', boss: { hp: 1200, atk: 48 } },
+  padrao: { n: 'Padrão', dur: 1200, d: 'O Ancestral desperta em 20 minutos.', boss: { hp: 2400, atk: 70 } },
+  longa:  { n: 'Longa',  dur: 1800, d: 'O Ancestral desperta em 30 minutos.', boss: { hp: 3600, atk: 88 } },
+  infinito: { n: 'Infinito', dur: 0, wave: 900, d: 'O Ancestral invade a cada 15 minutos, mais forte a cada vez. Acaba na primeira derrota.', boss: { hp: 1800, atk: 60 } },
+};
+const LEAGUES = ['Bronze', 'Prata', 'Ouro', 'Platina', 'Diamante', 'Mestre', 'Grão-Mestre', 'Campeões'];
+const LEAGUE_RARITY = [['C'], ['C', 'C', 'R'], ['R', 'C'], ['R', 'R', 'E'], ['E', 'R'], ['E', 'E', 'R'], ['E', 'L', 'E'], ['L', 'E']];
+const MAX_DLVL = 15;
+const MAX_PLVL = 30;
+const HAB_CAP = 3;
+const HATCH_COSTS = [300, 1500, 6000]; // custo do 2º, 3º e 4º espaço da chocadeira
+const EVENTS = {
+  chuva:    { n: 'Chuva de Ouro',    i: '🌧️', d: 'Ouro dos habitats em dobro por 30s.', dur: 30 },
+  colheita: { n: 'Colheita Farta',   i: '🌻', d: 'Plantações crescem 3x mais rápido por 30s.', dur: 30 },
+  ovo:      { n: 'Ovo Perdido',      i: '🥚', d: 'Um ovo raro apareceu na tela! Clique nele em 10s.', dur: 10 },
+  selvagem: { n: 'Dragão Selvagem',  i: '🐲', d: 'Um dragão selvagem desafia você na Arena. Recompensa tripla, 45s.', dur: 45 },
+  mercador: { n: 'Mercador Viajante', i: '🧳', d: 'Troque ouro por 10 gemas por 30s.', dur: 30 },
+};
+const MISSION_TPL = [
+  { k: 'gold',    stat: 'goldEarned',     i: '🪙', t: x => `Ganhe ${fmt(x)} de ouro`,       tgt: l => round5(250 * Math.pow(1.55, l - 1)) },
+  { k: 'food',    stat: 'foodHarvested',  i: '🌾', t: x => `Colha ${fmt(x)} de comida`,     tgt: l => round5(60 * Math.pow(1.45, l - 1)) },
+  { k: 'hatch',   stat: 'eggsHatched',    i: '🥚', t: x => `Choque ${x} ovo(s)`,            tgt: l => 1 + Math.floor(l / 4) },
+  { k: 'win',     stat: 'battlesWon',     i: '⚔️', t: x => `Vença ${x} batalha(s)`,         tgt: l => 1 + Math.floor(l / 3) },
+  { k: 'feed',    stat: 'feeds',          i: '🍖', t: x => `Alimente dragões ${x} vezes`,   tgt: l => 3 + l },
+  { k: 'breed',   stat: 'breeds',         i: '💞', t: x => `Cruze dragões ${x} vez(es)`,    tgt: l => 1 + Math.floor(l / 4) },
+  { k: 'harvest', stat: 'cropsHarvested', i: '🧺', t: x => `Faça ${x} colheitas`,           tgt: l => 4 + l },
+  { k: 'collect', stat: 'collects',       i: '🏛️', t: x => `Colete ouro ${x} vezes`,        tgt: l => 5 + 2 * l },
+];
+// Conquistas: cat = categoria, g = gemas de recompensa, c = condição
+const ACH = [
+  { cat: 'Primeiros passos', id: 'col1',   i: '🪙', n: 'Primeira coleta',     d: 'Colete ouro de um habitat.',              g: 1, c: s => s.collects >= 1 },
+  { cat: 'Primeiros passos', id: 'harv1',  i: '🌾', n: 'Mãos na terra',       d: 'Faça sua primeira colheita.',             g: 1, c: s => s.cropsHarvested >= 1 },
+  { cat: 'Primeiros passos', id: 'buy1',   i: '🛒', n: 'Novo amigo',          d: 'Compre um dragão na loja.',               g: 1, c: s => s.dragonsBought >= 1 },
+  { cat: 'Primeiros passos', id: 'feed1',  i: '🍖', n: 'Hora do lanche',      d: 'Alimente um dragão.',                     g: 1, c: s => s.feeds >= 1 },
+  { cat: 'Primeiros passos', id: 'breed1', i: '💞', n: 'Casamenteiro',        d: 'Cruze dois dragões.',                     g: 2, c: s => s.breeds >= 1 },
+  { cat: 'Primeiros passos', id: 'hatch1', i: '🐣', n: 'Choca-ovos',          d: 'Choque seu primeiro ovo.',                g: 2, c: s => s.eggsHatched >= 1 },
+  { cat: 'Primeiros passos', id: 'win1',   i: '⚔️', n: 'Primeira vitória',    d: 'Vença uma batalha na Arena.',             g: 2, c: s => s.battlesWon >= 1 },
+  { cat: 'Riqueza', id: 'gold1k',   i: '💰', n: 'Cofrinho',              d: 'Ganhe 1.000 de ouro no total.',            g: 1, c: s => s.goldEarned >= 1e3 },
+  { cat: 'Riqueza', id: 'gold10k',  i: '💰', n: 'Tesouro',               d: 'Ganhe 10.000 de ouro no total.',           g: 2, c: s => s.goldEarned >= 1e4 },
+  { cat: 'Riqueza', id: 'gold100k', i: '👑', n: 'Montanha de ouro',      d: 'Ganhe 100.000 de ouro no total.',          g: 5, c: s => s.goldEarned >= 1e5 },
+  { cat: 'Riqueza', id: 'gold1m',   i: '🏰', n: 'Dragão milionário',     d: 'Ganhe 1.000.000 de ouro no total.',        g: 10, c: s => s.goldEarned >= 1e6 },
+  { cat: 'Riqueza', id: 'gps10',    i: '📈', n: 'Renda passiva',         d: 'Alcance 10 de ouro por segundo.',          g: 1, c: s => s.peakGps >= 10 },
+  { cat: 'Riqueza', id: 'gps50',    i: '🏭', n: 'Fábrica de ouro',       d: 'Alcance 50 de ouro por segundo.',          g: 3, c: s => s.peakGps >= 50 },
+  { cat: 'Riqueza', id: 'gps200',   i: '🏦', n: 'Banco dracônico',       d: 'Alcance 200 de ouro por segundo.',         g: 5, c: s => s.peakGps >= 200 },
+  { cat: 'Riqueza', id: 'gps500',   i: '💎', n: 'Economia lendária',     d: 'Alcance 500 de ouro por segundo.',         g: 10, c: s => s.peakGps >= 500 },
+  { cat: 'Riqueza', id: 'gems100',  i: '💠', n: 'Joalheiro',             d: 'Ganhe 100 gemas no total.',                g: 5, c: s => s.gemsEarned >= 100 },
+  { cat: 'Coleção', id: 'own5',    i: '🐉', n: 'Bando',                  d: 'Tenha 5 dragões ao mesmo tempo.',          g: 1, c: () => S.dragons.length >= 5 },
+  { cat: 'Coleção', id: 'own10',   i: '🐉', n: 'Revoada',                d: 'Tenha 10 dragões ao mesmo tempo.',         g: 3, c: () => S.dragons.length >= 10 },
+  { cat: 'Coleção', id: 'own20',   i: '🐉', n: 'Céu lotado',             d: 'Tenha 20 dragões ao mesmo tempo.',         g: 5, c: () => S.dragons.length >= 20 },
+  { cat: 'Coleção', id: 'rare',    i: '🔷', n: 'Raridade',               d: 'Obtenha um dragão Raro.',                  g: 1, c: s => s.byRarity.R >= 1 },
+  { cat: 'Coleção', id: 'epic',    i: '🔮', n: 'Épico!',                 d: 'Obtenha um dragão Épico.',                 g: 3, c: s => s.byRarity.E >= 1 },
+  { cat: 'Coleção', id: 'legend',  i: '🌟', n: 'Lenda viva',             d: 'Obtenha um dragão Lendário.',              g: 5, c: s => s.byRarity.L >= 1 },
+  { cat: 'Coleção', id: 'legend3', i: '🏛️', n: 'Panteão',                d: 'Obtenha 3 dragões Lendários.',             g: 10, c: s => s.byRarity.L >= 3 },
+  { cat: 'Coleção', id: 'allel',   i: '🌈', n: 'Arco-íris elemental',    d: 'Tenha dragões dos 9 elementos ao mesmo tempo.', g: 8, c: () => ownedElements().size >= 9 },
+  { cat: 'Coleção', id: 'sp10',    i: '📗', n: 'Colecionador',           d: 'Descubra 10 espécies.',                    g: 3, c: () => Object.keys(S.dex).length >= 10 },
+  { cat: 'Coleção', id: 'sp25',    i: '📘', n: 'Naturalista',            d: 'Descubra 25 espécies.',                    g: 6, c: () => Object.keys(S.dex).length >= 25 },
+  { cat: 'Coleção', id: 'sp40',    i: '📕', n: 'Enciclopédia viva',      d: 'Descubra 40 espécies.',                    g: 12, c: () => Object.keys(S.dex).length >= 40 },
+  { cat: 'Evolução', id: 'lvl5',    i: '⬆️', n: 'Crescendo',             d: 'Leve um dragão ao nível 5.',               g: 1, c: s => s.maxDragonLvl >= 5 },
+  { cat: 'Evolução', id: 'lvl10',   i: '⏫', n: 'Adolescente feroz',     d: 'Leve um dragão ao nível 10.',              g: 3, c: s => s.maxDragonLvl >= 10 },
+  { cat: 'Evolução', id: 'lvl15',   i: '🔱', n: 'Forma máxima',          d: 'Leve um dragão ao nível 15.',              g: 6, c: s => s.maxDragonLvl >= 15 },
+  { cat: 'Evolução', id: 'feed50',  i: '🍗', n: 'Banquete',              d: 'Alimente dragões 50 vezes.',               g: 3, c: s => s.feeds >= 50 },
+  { cat: 'Evolução', id: 'breed20', i: '🧬', n: 'Genética avançada',     d: 'Cruze dragões 20 vezes.',                  g: 5, c: s => s.breeds >= 20 },
+  { cat: 'Evolução', id: 'speed5',  i: '⏩', n: 'Apressado',             d: 'Acelere 5 ovos com gemas.',                g: 2, c: s => s.eggsSpedUp >= 5 },
+  { cat: 'Fazenda', id: 'food1k',  i: '🧺', n: 'Celeiro cheio',          d: 'Colha 1.000 de comida.',                   g: 2, c: s => s.foodHarvested >= 1e3 },
+  { cat: 'Fazenda', id: 'food10k', i: '🚜', n: 'Agronegócio',            d: 'Colha 10.000 de comida.',                  g: 5, c: s => s.foodHarvested >= 1e4 },
+  { cat: 'Fazenda', id: 'harv100', i: '👩‍🌾', n: 'Fazendeiro dedicado',   d: 'Faça 100 colheitas.',                      g: 4, c: s => s.cropsHarvested >= 100 },
+  { cat: 'Fazenda', id: 'farm6',   i: '🌱', n: 'Latifúndio',             d: 'Tenha 6 fazendas.',                        g: 3, c: () => S.farms.length >= 6 },
+  { cat: 'Arena', id: 'win10',    i: '🛡️', n: 'Gladiador',              d: 'Vença 10 batalhas.',                       g: 3, c: s => s.battlesWon >= 10 },
+  { cat: 'Arena', id: 'win30',    i: '🏆', n: 'Campeão de arena',        d: 'Vença 30 batalhas.',                       g: 8, c: s => s.battlesWon >= 30 },
+  { cat: 'Arena', id: 'league3',  i: '🥉', n: 'Subindo de liga',         d: 'Chegue à liga Ouro.',                      g: 2, c: () => S.league >= 3 },
+  { cat: 'Arena', id: 'league5',  i: '🥈', n: 'Elite',                   d: 'Chegue à liga Diamante.',                  g: 5, c: () => S.league >= 5 },
+  { cat: 'Arena', id: 'league8',  i: '🥇', n: 'Liga dos Campeões',       d: 'Chegue à liga Campeões.',                  g: 8, c: () => S.league >= 8 },
+  { cat: 'Arena', id: 'boss',     i: '☠️', n: 'Golpe no sono',           d: 'Derrote o Ancestral adormecido na Arena, após a liga Campeões.',              g: 20, c: s => s.bossDefeated >= 1 },
+  { cat: 'Arena', id: 'streak5',  i: '🔥', n: 'Invicto',                 d: 'Vença 5 batalhas seguidas.',               g: 3, c: s => s.bestStreak >= 5 },
+  { cat: 'Arena', id: 'streak10', i: '☄️', n: 'Imparável',               d: 'Vença 10 batalhas seguidas.',              g: 6, c: s => s.bestStreak >= 10 },
+  { cat: 'Arena', id: 'crit50',   i: '🎯', n: 'Golpe certeiro',          d: 'Acerte 50 golpes críticos.',               g: 4, c: s => s.crits >= 50 },
+  { cat: 'Arena', id: 'super50',  i: '🧪', n: 'Mestre elemental',        d: 'Acerte 50 golpes super eficazes.',         g: 4, c: s => s.superEffective >= 50 },
+  { cat: 'Arena', id: 'flawless', i: '💯', n: 'Vitória perfeita',        d: 'Vença sem perder nenhum dragão (liga Platina ou acima).', g: 4, c: s => s.flawless >= 1 },
+  { cat: 'Arena', id: 'hit300',   i: '💥', n: 'Golpe devastador',        d: 'Cause 300 de dano em um único golpe.',     g: 4, c: s => s.bestHit >= 300 },
+  { cat: 'Ilha', id: 'hab5',     i: '🏘️', n: 'Condomínio',              d: 'Tenha 5 habitats.',                        g: 3, c: () => S.habitats.length >= 5 },
+  { cat: 'Ilha', id: 'slots4',   i: '🪺', n: 'Maternidade',              d: 'Tenha 4 espaços na chocadeira.',           g: 4, c: () => S.hatchSlots >= 4 },
+  { cat: 'Ilha', id: 'sell',     i: '👋', n: 'Desapego',                 d: 'Venda um dragão.',                         g: 1, c: s => s.dragonsSold >= 1 },
+  { cat: 'Ilha', id: 'miss5',    i: '📜', n: 'Prestativo',               d: 'Conclua 5 missões.',                       g: 3, c: s => s.missionsDone >= 5 },
+  { cat: 'Ilha', id: 'miss15',   i: '🎖️', n: 'Herói da ilha',            d: 'Conclua 15 missões.',                      g: 8, c: s => s.missionsDone >= 15 },
+  { cat: 'Ilha', id: 'egg3',     i: '🥚', n: 'Caçador de ovos',          d: 'Pegue 3 ovos perdidos.',                   g: 4, c: s => s.lostEggs >= 3 },
+  { cat: 'Ilha', id: 'event5',   i: '📣', n: 'Sempre alerta',            d: 'Presencie 5 eventos.',                     g: 2, c: s => s.eventsSeen >= 5 },
+  { cat: 'Jogador', id: 'plvl5',    i: '⭐', n: 'Aprendiz',               d: 'Chegue ao nível 5.',                       g: 2, c: () => S.level >= 5 },
+  { cat: 'Jogador', id: 'plvl10',   i: '🌟', n: 'Domador',                d: 'Chegue ao nível 10.',                      g: 5, c: () => S.level >= 10 },
+  { cat: 'Jogador', id: 'plvl20',   i: '💫', n: 'Mestre dos dragões',     d: 'Chegue ao nível 20.',                      g: 10, c: () => S.level >= 20 },
+  { cat: 'Jogador', id: 'fast5',    i: '⚡', n: 'Relâmpago',              d: 'Chegue ao nível 5 em até 5 minutos.',      g: 5, c: () => S.level >= 5 && S.t <= 300 },
+  { cat: 'Jogador', id: 'fastL',    i: '🍀', n: 'Sorte de principiante', d: 'Obtenha um Lendário em até 10 minutos.',   g: 8, c: s => s.firstLegendT !== null && s.firstLegendT <= 600 },
+  { cat: 'Jogador', id: 'clicks500', i: '👆', n: 'Dedo nervoso',          d: 'Faça 500 cliques.',                        g: 2, c: s => s.clicks >= 500 },
+  { cat: 'Invasão', id: 'defend',   i: '🛡️', n: 'Guardião da ilha',      d: 'Vença a Invasão Final.',                   g: 10, c: s => s.finalWins >= 1 },
+  { cat: 'Invasão', id: 'defend0',  i: '🏰', n: 'Ilha intocável',        d: 'Vença a Invasão Final sem perder nenhum dragão.', g: 15, c: s => s.finalPerfect >= 1 },
+  { cat: 'Invasão', id: 'half',     i: '🩸', n: 'Cicatriz no Ancestral', d: 'Tire metade da vida do Ancestral na Invasão Final.', g: 5, c: s => s.finalDmgPct >= 0.5 },
+];
+// (DATA-END)
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+const $ = sel => document.querySelector(sel);
+// Som: atalho seguro para o objeto global criado por audio.js
+const sfx = (nome, opts) => { try { window.Som && Som.play(nome, opts); } catch (e) { /* áudio é opcional */ } };
+const music = nome => { try { window.Som && Som.musica(nome); } catch (e) { /* áudio é opcional */ } };
+const tension = v => { try { window.Som && Som.tensao(v); } catch (e) { /* áudio é opcional */ } };
+const RAR_SOM = { C: 'comum', R: 'raro', E: 'epico', L: 'lendario' };
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+function round5(n) { return n < 50 ? Math.round(n) : Math.round(n / 5) * 5; }
+function fmt(n) {
+  n = Math.floor(n);
+  const a = Math.abs(n);
+  if (a < 1e4) return n.toLocaleString('pt-BR');
+  if (a < 1e6) return (n / 1e3).toFixed(a < 1e5 ? 1 : 0).replace('.', ',') + 'k';
+  if (a < 1e9) return (n / 1e6).toFixed(2).replace('.', ',') + 'M';
+  return (n / 1e9).toFixed(2).replace('.', ',') + 'B';
+}
+function fmtTime(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
+
+// ============================================================
+// ESPÉCIES E ATRIBUTOS
+// ============================================================
+function speciesFromEls(els) {
+  const s = [...new Set(els)].sort((a, b) => EL_KEYS.indexOf(a) - EL_KEYS.indexOf(b));
+  if (s.length === 1) {
+    const e = s[0];
+    return { key: e, name: EL[e].pn, els: s, rar: SPECIAL_EL.includes(e) ? 'R' : 'C' };
+  }
+  const rar = s.some(e => SPECIAL_EL.includes(e)) ? 'E' : 'R';
+  return { key: s.join('+'), name: EL[s[0]].pre + EL[s[1]].suf, els: s, rar };
+}
+function speciesFromLegend(L) { return { key: 'L:' + L.k, name: L.n, els: L.els.slice(), rar: 'L' }; }
+function allSpecies() {
+  const out = [];
+  EL_KEYS.forEach(e => out.push(speciesFromEls([e])));
+  for (let i = 0; i < EL_KEYS.length; i++) for (let j = i + 1; j < EL_KEYS.length; j++) out.push(speciesFromEls([EL_KEYS[i], EL_KEYS[j]]));
+  LEGENDS.forEach(L => out.push(speciesFromLegend(L)));
+  return out;
+}
+const ALL_SPECIES = allSpecies();
+const gpsOf = d => RARITY[d.rar].gps * (1 + 0.4 * (d.lvl - 1));
+const hpOf = d => Math.round(RARITY[d.rar].hp * (1 + 0.2 * (d.lvl - 1)));
+const atkOf = d => Math.round(RARITY[d.rar].atk * (1 + 0.16 * (d.lvl - 1)));
+const powerOf = d => Math.round(hpOf(d) / 4 + atkOf(d) * 2);
+const feedCost = lvl => Math.round(10 * Math.pow(1.5, lvl - 1));
+const sellValue = d => Math.round(25 * RARITY[d.rar].rv * d.lvl);
+const breedCost = (a, b) => 30 * (RARITY[a.rar].rv + RARITY[b.rar].rv);
+const habitatCost = () => Math.round(150 * Math.pow(2.1, S.habitats.length - 1));
+const farmCost = () => Math.round(100 * Math.pow(1.8, S.farms.length - 2));
+const xpNeed = l => Math.round(40 * Math.pow(l, 1.6));
+function eff(atkEl, defEls) {
+  if (!atkEl || !defEls || !defEls.length) return 1;
+  let m = 1;
+  for (const d of defEls) {
+    if (STRONG[atkEl].includes(d)) m *= 1.5;
+    else if (STRONG[d] && STRONG[d].includes(atkEl)) m *= 0.7;
+  }
+  return m;
+}
+function ownedElements() { const s = new Set(); S.dragons.forEach(d => d.els.forEach(e => s.add(e))); return s; }
+
+// ============================================================
+// ESTADO (vive só na memória: fechou a aba, acabou a partida)
+// ============================================================
+let S = null;
+function newStats() {
+  return {
+    clicks: 0, goldEarned: 0, goldSpent: 0, collects: 0, bestCollect: 0, peakGps: 0,
+    foodHarvested: 0, foodSpent: 0, cropsPlanted: 0, cropsHarvested: 0,
+    dragonsBought: 0, dragonsSold: 0, feeds: 0, maxDragonLvl: 1,
+    breeds: 0, eggsHatched: 0, eggsSpedUp: 0, byRarity: { C: 1, R: 0, E: 0, L: 0 }, firstLegendT: null,
+    battles: 0, battlesWon: 0, battlesLost: 0, streak: 0, bestStreak: 0, damageDealt: 0, damageTaken: 0,
+    bestHit: 0, crits: 0, superEffective: 0, kos: 0, kosTaken: 0, flawless: 0, bossDefeated: 0, wildWins: 0, finalWins: 0, finalPerfect: 0, finalDmgPct: 0,
+    gemsEarned: 0, gemsSpent: 0, missionsDone: 0, eventsSeen: 0, lostEggs: 0, xpTotal: 0, levelUps: 0,
+  };
+}
+function newState(modeKey) {
+  const st = {
+    mode: modeKey, t: 0, running: true, paused: false, ended: false,
+    gold: 250, food: 30, gems: 5, xp: 0, level: 1,
+    dragons: [], habitats: [{ stored: 0 }], farms: [{ crop: null, prog: 0 }, { crop: null, prog: 0 }],
+    eggs: [], hatchSlots: 1, selCrop: 'trigo',
+    league: 1, leagueFight: 0, battle: null, team: [], autoBattle: false, lastResult: null,
+    missions: [], ach: {}, dex: {}, stats: newStats(),
+    buffs: {}, event: null, nextEvent: 50, lostEgg: null, warned: [], finalPhase: false, finalResult: null, nextInvasion: 900, wave: 0, weakened: false,
+    history: [{ t: 0, earned: 0, gps: 0 }], nextId: 1, tab: 'ilha', breedA: null, breedB: null,
+  };
+  return st;
+}
+function addDragon(sp, lvl = 1) {
+  const d = { id: S.nextId++, key: sp.key, name: sp.name, els: sp.els.slice(), rar: sp.rar, lvl, born: S.t };
+  S.dragons.push(d);
+  if (!S.dex[sp.key]) S.dex[sp.key] = S.t;
+  return d;
+}
+const capacity = () => S.habitats.length * HAB_CAP;
+const habDragons = i => S.dragons.slice(i * HAB_CAP, i * HAB_CAP + HAB_CAP);
+const habGps = i => habDragons(i).reduce((a, d) => a + gpsOf(d), 0);
+const goldMult = () => (S.buffs.chuva > S.t ? 2 : 1);
+const farmMult = () => (S.buffs.colheita > S.t ? 3 : 1);
+const totalGps = () => S.habitats.reduce((a, h, i) => a + habGps(i), 0) * goldMult();
+const unlockedCrop = k => S.level >= CROPS[k].lvl;
+
+// ============================================================
+// AÇÕES BÁSICAS
+// ============================================================
+function addGold(n) { n = Math.round(n); S.gold += n; S.stats.goldEarned += n; }
+function spendGold(n) {
+  if (S.gold < n) { toast('Ouro insuficiente', `Faltam ${fmt(n - S.gold)} de ouro.`, 'bad'); return false; }
+  S.gold -= n; S.stats.goldSpent += n; return true;
+}
+function addGems(n) { S.gems += n; S.stats.gemsEarned += n; }
+function spendGems(n) {
+  if (S.gems < n) { toast('Gemas insuficientes', `Você precisa de ${n} gemas.`, 'bad'); return false; }
+  S.gems -= n; S.stats.gemsSpent += n; return true;
+}
+function addXp(n) {
+  n = Math.round(n);
+  S.xp += n; S.stats.xpTotal += n;
+  while (S.level < MAX_PLVL && S.xp >= xpNeed(S.level)) {
+    S.xp -= xpNeed(S.level); S.level++; S.stats.levelUps++;
+    sfx('nivelJogador');
+    const gems = 2 + Math.floor(S.level / 5);
+    addGems(gems);
+    const unlocks = [];
+    EL_KEYS.forEach(k => { if (EL[k].unlock === S.level) unlocks.push(EL[k].i + ' ' + EL[k].n); });
+    Object.values(CROPS).forEach(c => { if (c.lvl === S.level) unlocks.push(c.i + ' ' + c.n); });
+    if (S.level === 3) unlocks.push('Colher e replantar tudo');
+    if (S.level === 5) unlocks.push('Coletar tudo');
+    toast(`Nível ${S.level}!`, `+${gems} gemas${unlocks.length ? ' · Desbloqueado: ' + unlocks.join(', ') : ''}`, 'ach');
+  }
+}
+
+function collect(i, ev) {
+  const h = S.habitats[i];
+  const amt = Math.floor(h.stored);
+  if (amt < 1) return;
+  h.stored -= amt;
+  addGold(amt); S.stats.collects++; S.stats.bestCollect = Math.max(S.stats.bestCollect, amt);
+  sfx('coletar', { quantidade: clamp(Math.ceil(Math.log10(amt + 1)), 1, 5) });
+  addXp(2);
+  if (ev) floatText(`+${fmt(amt)}`, ev.clientX, ev.clientY);
+}
+function collectAll(ev) {
+  let total = 0;
+  S.habitats.forEach((h, i) => { const a = Math.floor(h.stored); if (a >= 1) { h.stored -= a; total += a; S.stats.collects++; } });
+  if (!total) return;
+  addGold(total); S.stats.bestCollect = Math.max(S.stats.bestCollect, total); addXp(2);
+  sfx('coletarTudo');
+  if (ev) floatText(`+${fmt(total)}`, ev.clientX, ev.clientY);
+}
+function plant(i, silent) {
+  const f = S.farms[i];
+  if (f.crop) return false;
+  const c = CROPS[S.selCrop];
+  if (!spendGold(c.cost)) return false;
+  f.crop = S.selCrop; f.prog = 0; S.stats.cropsPlanted++;
+  if (!silent) sfx('plantar');
+  return true;
+}
+function harvest(i, ev, silent) {
+  const f = S.farms[i];
+  if (!f.crop) return plant(i, silent);
+  const c = CROPS[f.crop];
+  if (f.prog < c.dur) return;
+  S.food += c.food; S.stats.foodHarvested += c.food; S.stats.cropsHarvested++;
+  addXp(1 + c.food / 15);
+  if (ev) floatText(`+${c.food} 🍖`, ev.clientX, ev.clientY, 'var(--food)');
+  f.crop = null; f.prog = 0;
+  if (!silent) sfx('colher');
+  return true;
+}
+function harvestAll() {
+  let did = false;
+  S.farms.forEach((f, i) => {
+    if (f.crop && f.prog >= CROPS[f.crop].dur) did = harvest(i, null, true) || did;
+  });
+  S.farms.forEach((f, i) => { if (!f.crop && S.gold >= CROPS[S.selCrop].cost) did = plant(i, true) || did; });
+  if (did) sfx('colherTudo');
+}
+function buyDragon(e) {
+  if (S.level < EL[e].unlock) return;
+  if (S.dragons.length >= capacity()) { toast('Sem espaço', 'Compre outro habitat antes.', 'bad'); return; }
+  if (!spendGold(EL[e].cost)) return;
+  const sp = speciesFromEls([e]);
+  addDragon(sp); S.stats.dragonsBought++; S.stats.byRarity[sp.rar]++;
+  sfx('comprar');
+  addXp(10);
+  toast(`${sp.name} chegou!`, 'Ele já está produzindo ouro no habitat.');
+}
+function feed(id) {
+  const d = S.dragons.find(x => x.id === id);
+  if (!d || d.lvl >= MAX_DLVL) return;
+  const c = feedCost(d.lvl);
+  if (S.food < c) { toast('Comida insuficiente', `Faltam ${fmt(c - S.food)} de comida. Plante na fazenda.`, 'bad'); return; }
+  S.food -= c; S.stats.foodSpent += c; S.stats.feeds++;
+  sfx('alimentar'); setTimeout(() => sfx('nivelDragao'), 180);
+  d.lvl++; S.stats.maxDragonLvl = Math.max(S.stats.maxDragonLvl, d.lvl);
+  addXp(3 + d.lvl);
+}
+function sell(id) {
+  if (S.dragons.length <= 1) { toast('Não dá', 'Você precisa de pelo menos um dragão.', 'bad'); return; }
+  const idx = S.dragons.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const d = S.dragons[idx];
+  if (d._confirm !== true) { d._confirm = true; setTimeout(() => { d._confirm = false; render(); }, 2500); return; }
+  S.dragons.splice(idx, 1);
+  S.team = S.team.filter(t => t !== id);
+  if (S.breedA === id) S.breedA = null;
+  if (S.breedB === id) S.breedB = null;
+  addGold(sellValue(d)); S.stats.dragonsSold++;
+  sfx('vender');
+  toast(`${d.name} foi vendido`, `+${fmt(sellValue(d))} de ouro`);
+}
+function buyHabitat() { if (S.habitats.length >= HAB_LOTS.length) { toast('Ilha cheia', 'Todos os lotes de habitat estão ocupados.', 'bad'); return; } if (spendGold(habitatCost())) { S.habitats.push({ stored: 0 }); sfx('comprar'); addXp(8); } }
+function buyFarm() { if (S.farms.length >= FARM_LOTS.length) { toast('Ilha cheia', 'Todos os lotes de fazenda estão ocupados.', 'bad'); return; } if (spendGold(farmCost())) { S.farms.push({ crop: null, prog: 0 }); sfx('comprar'); addXp(5); } }
+function buyHatch() {
+  const c = HATCH_COSTS[S.hatchSlots - 1];
+  if (c === undefined) return;
+  if (spendGold(c)) { S.hatchSlots++; addXp(8); sfx('comprar'); }
+}
+function gemsToGold() {
+  if (!spendGems(5)) return;
+  const g = 150 * S.level + Math.round(totalGps() * 30);
+  addGold(g); sfx('comprar'); toast('Troca feita', `+${fmt(g)} de ouro`);
+}
+function mysteryEgg() {
+  if (S.eggs.filter(e => !e.free).length >= S.hatchSlots) { toast('Chocadeira cheia', 'Espere um ovo chocar ou compre outro espaço.', 'bad'); return; }
+  if (!spendGems(20)) return;
+  const pool = ALL_SPECIES.filter(s => s.rar === 'E' || (s.rar === 'L' && Math.random() < 0.5));
+  layEgg(pick(pool));
+  toast('Ovo misterioso!', 'Está na chocadeira.');
+}
+
+// ============================================================
+// CRUZAMENTO E CHOCADEIRA
+// ============================================================
+function breedOutcomes(a, b) {
+  const pool = new Set([...a.els, ...b.els]);
+  const res = [];
+  let remaining = 1;
+  for (const L of LEGENDS) {
+    if (L.els.every(e => pool.has(e))) { res.push({ sp: speciesFromLegend(L), p: remaining * L.ch }); remaining *= 1 - L.ch; }
+  }
+  const combos = [];
+  a.els.forEach(x => b.els.forEach(y => combos.push(speciesFromEls([x, y]))));
+  const per = remaining / combos.length;
+  combos.forEach(sp => {
+    const ex = res.find(r => r.sp.key === sp.key);
+    if (ex) ex.p += per; else res.push({ sp, p: per });
+  });
+  return res.sort((x, y) => y.p - x.p);
+}
+function rollBreed(a, b) {
+  const out = breedOutcomes(a, b);
+  let r = Math.random();
+  for (const o of out) { if ((r -= o.p) <= 0) return o.sp; }
+  return out[out.length - 1].sp;
+}
+function layEgg(sp, free = false) {
+  if (!free) sfx('ovoColocado');
+  S.eggs.push({ id: S.nextId++, sp, prog: 0, dur: RARITY[sp.rar].egg, free });
+}
+function breed() {
+  const a = S.dragons.find(d => d.id === S.breedA), b = S.dragons.find(d => d.id === S.breedB);
+  if (!a || !b) return;
+  if (a.lvl < 3 || b.lvl < 3) { toast('Muito jovens', 'Os dois dragões precisam de nível 3 ou mais.', 'bad'); return; }
+  if (S.eggs.filter(e => !e.free).length >= S.hatchSlots) { toast('Chocadeira cheia', 'Choque um ovo ou compre outro espaço na loja.', 'bad'); return; }
+  if (!spendGold(breedCost(a, b))) return;
+  const sp = rollBreed(a, b);
+  layEgg(sp);
+  S.stats.breeds++; addXp(5); sfx('cruzar');
+  toast('Um ovo foi posto!', `Raridade: ${RARITY[sp.rar].n}. Veja na chocadeira.`);
+}
+function hatch(id) {
+  const i = S.eggs.findIndex(e => e.id === id);
+  const egg = S.eggs[i];
+  if (!egg || egg.prog < egg.dur) return;
+  if (S.dragons.length >= capacity()) { toast('Sem espaço', 'Compre outro habitat para chocar este ovo.', 'bad'); return; }
+  S.eggs.splice(i, 1);
+  const isNew = !S.dex[egg.sp.key];
+  addDragon(egg.sp);
+  S.stats.eggsHatched++; S.stats.byRarity[egg.sp.rar]++;
+  if (egg.sp.rar === 'L' && S.stats.firstLegendT === null) S.stats.firstLegendT = S.t;
+  addXp(10 * RARITY[egg.sp.rar].rv + (isNew ? 15 : 0));
+  if (isNew || RARITY[egg.sp.rar].rv >= 3) sfx('revelacao', { raridade: RAR_SOM[egg.sp.rar] }); else sfx('chocar');
+  if (isNew || RARITY[egg.sp.rar].rv >= 3) {
+    overlay(`<div class="card hero"><span class="cat">${isNew ? 'Espécie nova no Dragonário' : 'Nasceu um dragão'}</span>
+      ${dIcon(egg.sp.els, egg.sp.rar, 'xl', 'pop', S.nextId)}
+      <h1>${egg.sp.name}</h1><p><span class="rar-${egg.sp.rar}">${RARITY[egg.sp.rar].n}</span> · ${elTags(egg.sp.els)}</p>
+      <button class="btn primary" data-a="cancelEnd">Continuar</button></div>`);
+  } else toast(`Nasceu: ${egg.sp.name}!`, RARITY[egg.sp.rar].n);
+}
+const speedCost = egg => Math.max(1, Math.ceil((egg.dur - egg.prog) / 8));
+function speedEgg(id) {
+  const egg = S.eggs.find(e => e.id === id);
+  if (!egg || egg.prog >= egg.dur) return;
+  if (!spendGems(speedCost(egg))) return;
+  egg.prog = egg.dur; S.stats.eggsSpedUp++;
+}
+
+// ============================================================
+// ARENA
+// ============================================================
+function fighterFromDragon(d) {
+  return { name: d.name, els: d.els, rar: d.rar, lvl: d.lvl, hpMax: hpOf(d), hp: hpOf(d), atk: atkOf(d), cd: 0, did: d.id };
+}
+function randomSpeciesOfRarity(r) {
+  return pick(ALL_SPECIES.filter(s => s.rar === r));
+}
+function enemyTeam(league, fight, bonus = 0) {
+  const n = Math.min(3, Math.ceil((league + fight) / 2));
+  const lvl = clamp(1 + (league - 1) * 2 + fight + bonus, 1, MAX_DLVL);
+  const team = [];
+  for (let k = 0; k < n; k++) {
+    const sp = randomSpeciesOfRarity(pick(LEAGUE_RARITY[league - 1]));
+    const f = fighterFromDragon({ ...sp, lvl });
+    f.hp = f.hpMax = Math.round(f.hpMax * 0.95); f.atk = Math.round(f.atk * 0.95);
+    team.push(f);
+  }
+  return team;
+}
+function bossTeam(final) {
+  const b = MODES[S.mode].boss, k = S.mode === 'infinito' ? Math.pow(1.35, S.wave) : 1;
+  let hp = Math.round(b.hp * k), atk = Math.round(b.atk * k);
+  if (!final) { hp = Math.round(hp * 0.8); atk = Math.round(atk * 0.8); }
+  else if (S.weakened) hp = Math.round(hp * 0.7);
+  return [{ name: final ? 'Dragão Ancestral' : 'Ancestral adormecido', els: [], disp: ['trevas', 'fogo'], rar: 'L', lvl: 99, hpMax: hp, hp, atk, cd: 0, boss: true }];
+}
+function teamDragons() {
+  let ids = S.team.filter(id => S.dragons.some(d => d.id === id));
+  if (!ids.length) ids = [...S.dragons].sort((a, b) => powerOf(b) - powerOf(a)).slice(0, 3).map(d => d.id);
+  S.team = ids;
+  return ids.map(id => S.dragons.find(d => d.id === id));
+}
+function startBattle(kind) {
+  if (S.battle) return;
+  const team = teamDragons().map(fighterFromDragon);
+  let foes;
+  if (S.finalPhase !== (kind === 'final')) return;
+  if (kind === 'final') { foes = bossTeam(true); S.weakened = false; }
+  else if (kind === 'boss') { if (S.league <= LEAGUES.length) return; foes = bossTeam(false); }
+  else if (kind === 'wild') {
+    if (!(S.event && S.event.type === 'selvagem' && S.event.until > S.t)) return;
+    foes = enemyTeam(Math.min(S.league, 8), 2, 1).slice(0, 1).map(f => { f.hp = f.hpMax = Math.round(f.hpMax * 1.6); f.name += ' Selvagem'; return f; });
+    S.event.until = S.t; // consome o evento
+  } else {
+    if (S.league > LEAGUES.length) return;
+    foes = enemyTeam(S.league, S.leagueFight);
+  }
+  S.battle = { kind, team, foes, pi: 0, ei: 0, log: [], over: false, turn: 0, lost: 0 };
+  S.lastResult = null;
+  logB(`A batalha começou! ${team[0].name} contra ${foes[0].name}.`);
+  sfx('batalhaInicio'); if (kind !== 'final') music('batalha');
+  S.stats.battles++;
+}
+function logB(txt, cls = '') { const B = S.battle; B.log.push({ txt, cls }); if (B.log.length > 40) B.log.shift(); }
+function moveEl(f, kind) {
+  if (f.boss) return pick(EL_KEYS);
+  return kind === 'sp' ? (f.els[1] || f.els[0]) : f.els[0];
+}
+function movePower(f, kind) { return kind === 'sp' ? (f.rar === 'L' || f.boss ? 2.0 : 1.7) : 1; }
+function doAttack(a, d, kind, isPlayer) {
+  const el = moveEl(a, kind);
+  const m = eff(el, d.els);
+  const crit = Math.random() < 0.12;
+  const dmg = Math.max(1, Math.round(a.atk * movePower(a, kind) * m * (crit ? 1.5 : 1) * rnd(0.9, 1.1)));
+  d.hp = Math.max(0, d.hp - dmg);
+  if (kind === 'sp') a.cd = 3; else if (a.cd > 0) a.cd--;
+  const moveName = kind === 'sp' ? (a.boss ? 'Sopro Ancestral' : `Especial ${EL[el].i}`) : `Ataque ${EL[el].i}`;
+  logB(`${a.name} usou ${moveName} e causou ${dmg} de dano${crit ? ' (crítico!)' : ''}.`, crit ? 'cr' : '');
+  if (m > 1) logB('É super eficaz!', 'se'); else if (m < 1) logB('Não foi muito eficaz…', 'ne');
+  fxQueue.push({ from: isPlayer ? 'me' : 'foe', to: isPlayer ? 'foe' : 'me', el, dmg, crit, m, kind, boss: !!a.boss, ko: d.hp <= 0 });
+  if (isPlayer) {
+    S.stats.damageDealt += dmg; S.stats.bestHit = Math.max(S.stats.bestHit, dmg);
+    if (crit) S.stats.crits++;
+    if (m > 1) S.stats.superEffective++;
+  } else S.stats.damageTaken += dmg;
+}
+// Efeitos visuais de ataque: investida, projétil do elemento, impacto e número de dano
+const fxQueue = [];
+function runFx() {
+  const list = fxQueue.splice(0);
+  list.forEach((fx, i) => setTimeout(() => playFx(fx), i * 480));
+}
+function fxSound(fx, phase) {
+  if (phase === 'launch') {
+    if (fx.boss && fx.kind === 'sp') sfx('soproAncestral');
+    else sfx(fx.kind === 'sp' ? 'especial' : 'ataque', { elemento: fx.el || 'neutro' });
+  } else {
+    sfx(fx.crit ? 'critico' : 'acerto');
+    if (fx.m > 1) sfx('superEficaz'); else if (fx.m < 1) sfx('poucoEficaz');
+    if (fx.ko) setTimeout(() => sfx('nocaute'), 160);
+  }
+}
+function playFx(fx) {
+  fxSound(fx, 'launch');
+  const src = document.querySelector(`.side[data-side="${fx.from}"] .dic`);
+  const dst = document.querySelector(`.side[data-side="${fx.to}"] .dic`);
+  if (!src || !dst || !src.animate) { setTimeout(() => fxSound(fx, 'hit'), 300); return; }
+  const a = src.getBoundingClientRect(), b = dst.getBoundingClientRect();
+  const dx = b.left - a.left, dy = b.top - a.top;
+  src.animate([{ transform: 'none' }, { transform: `translate(${dx * 0.12}px, ${-10}px) rotate(${dx > 0 ? 6 : -6}deg)` }, { transform: 'none' }], { duration: 320, easing: 'ease-out' });
+  const p = document.createElement('div');
+  p.className = 'proj'; p.textContent = fx.el ? EL[fx.el].i : '💥';
+  p.style.left = (a.left + a.width / 2 - 15) + 'px'; p.style.top = (a.top + a.height / 3) + 'px';
+  document.body.appendChild(p);
+  const fly = p.animate([{ transform: 'translate(0,0) scale(.6)' }, { transform: `translate(${dx / 2}px, ${dy / 2 - 40}px) scale(1.2)` }, { transform: `translate(${dx}px, ${dy}px) scale(1.4)`, opacity: .9 }], { duration: 300, easing: 'ease-in' });
+  fly.onfinish = () => {
+    p.remove(); fxSound(fx, 'hit');
+    dst.animate([{ transform: 'none', filter: 'none' }, { transform: 'translateX(-8px)', filter: 'brightness(2.2)' }, { transform: 'translateX(7px)', filter: 'brightness(1.5)' }, { transform: 'none', filter: 'none' }], { duration: 360 });
+    floatText(`${fx.crit ? 'CRÍTICO ' : ''}-${fx.dmg}`, b.left + b.width / 2, b.top + b.height / 3, fx.m > 1 ? 'var(--good)' : fx.crit ? 'var(--gold)' : 'var(--bad)');
+  };
+}
+function bestMove(f, foe) {
+  if (f.cd > 0) return 'b';
+  return eff(moveEl(f, 'sp'), foe.els) * movePower(f, 'sp') >= eff(moveEl(f, 'b'), foe.els) ? 'sp' : 'b';
+}
+function playerMove(kind) {
+  const B = S.battle;
+  if (!B || B.over) return;
+  const p = B.team[B.pi], e = B.foes[B.ei];
+  if (kind === 'sp' && p.cd > 0) return;
+  B.turn++;
+  doAttack(p, e, kind, true);
+  if (e.hp <= 0) {
+    logB(`${e.name} foi nocauteado!`, 'ko'); S.stats.kos++;
+    const next = B.foes.findIndex(f => f.hp > 0);
+    if (next < 0) return endBattle(true);
+    B.ei = next; logB(`O oponente envia ${B.foes[next].name}.`);
+    return;
+  }
+  const ek = e.cd === 0 && Math.random() < 0.7 ? 'sp' : 'b';
+  doAttack(e, p, ek, false);
+  if (p.hp <= 0) {
+    logB(`${p.name} foi nocauteado!`, 'ko'); S.stats.kosTaken++; B.lost++;
+    const next = B.team.findIndex(f => f.hp > 0);
+    if (next < 0) return endBattle(false);
+    B.pi = next; logB(`Você envia ${B.team[next].name}.`);
+  }
+}
+function surrender() { if (S.battle && !S.battle.over) { logB('Você desistiu.'); endBattle(false); } }
+function endBattle(win) {
+  const B = S.battle;
+  B.over = true;
+  const st = S.stats;
+  const r = { win, kind: B.kind, gold: 0, gems: 0, xp: 0, text: '' };
+  if (win) {
+    st.battlesWon++; st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak);
+    if (B.lost === 0 && (B.kind !== 'arena' || S.league >= 4)) st.flawless++;
+    if (B.kind === 'final') {
+      st.finalWins++; if (B.lost === 0) st.finalPerfect++;
+      if (S.mode === 'infinito') {
+        S.wave++; r.gold = 3000 * S.wave; r.gems = 20; r.xp = 300;
+        r.text = `Invasão ${S.wave} repelida! O Ancestral volta em 15 minutos, mais forte.`;
+      } else r.text = 'A ilha resistiu! O Dragão Ancestral foi derrotado e voltou a dormir por mil anos.';
+    } else if (B.kind === 'boss') {
+      r.text = S.weakened ? 'Você venceu o Ancestral adormecido de novo.' : 'Você feriu o Ancestral no sono! Na próxima invasão ele terá 30% menos vida.';
+      S.weakened = true;
+      st.bossDefeated++; r.gold = Math.round(8000 * modeFactor()); r.gems = 30; r.xp = 400;
+    } else {
+      const L = Math.min(S.league, 8), f = B.kind === 'wild' ? 2 : S.leagueFight;
+      r.gold = Math.round(90 * Math.pow(L, 1.9) * (1 + f * 0.5));
+      r.gems = L; r.xp = 15 * L + 5 * f;
+      if (B.kind === 'wild') { r.gold *= 3; r.gems *= 3; r.xp *= 2; st.wildWins++; r.text = 'O dragão selvagem foi derrotado!'; }
+      else {
+        S.leagueFight++;
+        if (S.leagueFight >= 3) {
+          S.leagueFight = 0; S.league++;
+          r.text = S.league > LEAGUES.length ? 'Você venceu a liga dos Campeões! O Dragão Ancestral aguarda.' : `Promovido para a liga ${LEAGUES[S.league - 1]}!`;
+        } else r.text = `Luta ${S.leagueFight} de 3 da liga ${LEAGUES[S.league - 1]} vencida.`;
+      }
+    }
+    addGold(r.gold); addGems(r.gems); addXp(r.xp);
+  } else {
+    st.battlesLost++; st.streak = 0;
+    r.xp = 5; addXp(5);
+    r.text = B.kind === 'final' ? 'O Ancestral tomou a ilha. Seus dragões lutaram até o fim.' : 'Seus dragões precisam ficar mais fortes. Alimente-os ou cruze espécies com vantagem elemental.';
+  }
+  if (B.kind === 'final' && S.mode === 'infinito' && win) {
+    S.finalPhase = false; S.nextInvasion = S.t + MODES.infinito.wave; S.warned = [];
+    st.finalDmgPct = 1;
+  } else if (B.kind === 'final') {
+    const boss = B.foes[0];
+    S.finalResult = { win, dmgPct: 1 - boss.hp / boss.hpMax, lost: B.lost };
+    st.finalDmgPct = Math.max(st.finalDmgPct, S.finalResult.dmgPct);
+    r.gold = r.gems = 0; r.xp = 0;
+  }
+  S.lastResult = r;
+  setTimeout(() => sfx(win ? 'vitoria' : 'derrota'), 750);
+}
+function closeBattle() { S.battle = null; music(S.finalPhase ? 'invasao' : 'ilha'); if (!S.finalPhase && S.mode === 'infinito') tension(0); }
+function toggleTeam(id) {
+  const has = S.team.includes(id);
+  if (has) { if (S.team.length > 1) S.team = S.team.filter(t => t !== id); }
+  else { if (S.team.length >= 3) S.team.shift(); S.team.push(id); }
+}
+
+// ============================================================
+// MISSÕES, EVENTOS E CONQUISTAS
+// ============================================================
+function newMission(exclude = []) {
+  const tpl = pick(MISSION_TPL.filter(t => !exclude.includes(t.k)));
+  const target = tpl.tgt(S.level);
+  return { k: tpl.k, target, base: S.stats[tpl.stat], gold: round5(80 * Math.pow(1.45, S.level - 1)), gems: 1 + (S.level >= 6 ? 1 : 0) + (S.level >= 12 ? 1 : 0), xp: 20 + 8 * S.level };
+}
+function initialMissions() {
+  return [
+    { k: 'collect', target: 1, base: 0, gold: 60, gems: 1, xp: 15 },
+    { k: 'harvest', target: 2, base: 0, gold: 60, gems: 1, xp: 15 },
+    { k: 'feed', target: 2, base: 0, gold: 80, gems: 1, xp: 15 },
+  ];
+}
+const missionTpl = m => MISSION_TPL.find(t => t.k === m.k);
+const missionProg = m => Math.min(m.target, S.stats[missionTpl(m).stat] - m.base);
+function claimMission(i) {
+  const m = S.missions[i];
+  if (!m || missionProg(m) < m.target) return;
+  addGold(m.gold); addGems(m.gems); addXp(m.xp); S.stats.missionsDone++; sfx('missao');
+  S.missions[i] = newMission(S.missions.map(x => x.k));
+  toast('Missão concluída!', `+${fmt(m.gold)} ouro · +${m.gems} gemas`);
+}
+function triggerEvent() {
+  const type = pick(Object.keys(EVENTS));
+  const ev = EVENTS[type];
+  S.event = { type, until: S.t + ev.dur };
+  S.stats.eventsSeen++;
+  if (type === 'chuva') S.buffs.chuva = S.t + ev.dur;
+  if (type === 'colheita') S.buffs.colheita = S.t + ev.dur;
+  if (type === 'ovo') S.lostEgg = { until: S.t + ev.dur, x: rnd(10, 80), y: rnd(25, 75) };
+  if (type === 'mercador') S.event.price = 400 * S.level;
+  toast(`${ev.i} ${ev.n}`, ev.d, 'ach');
+  sfx({ chuva: 'chuvaOuro', colheita: 'colheitaFarta', ovo: 'ovoPerdido', selvagem: 'dragaoSelvagem', mercador: 'mercador' }[type] || 'evento');
+  S.nextEvent = S.t + rnd(60, 100);
+}
+function catchEgg() {
+  if (!S.lostEgg) return;
+  S.lostEgg = null;
+  S.stats.lostEggs++; sfx('ovoPego');
+  const pool = ALL_SPECIES.filter(s => s.rar === 'R' || s.rar === 'E');
+  layEgg(pick(pool), true);
+  toast('Você pegou o ovo!', 'Ele foi para a chocadeira, sem ocupar espaço.', 'ach');
+}
+function buyMerchant() {
+  if (!(S.event && S.event.type === 'mercador' && S.event.until > S.t)) return;
+  if (!spendGold(S.event.price)) return;
+  addGems(10); S.event.until = S.t; sfx('gemas');
+  toast('Negócio fechado', '+10 gemas');
+}
+function checkAchievements() {
+  for (const a of ACH) {
+    if (S.ach[a.id] === undefined && a.c(S.stats)) {
+      S.ach[a.id] = S.t; addGems(a.g); sfx('conquista');
+      toast(`🏆 ${a.n}`, `${a.d} +${a.g} gemas`, 'ach');
+    }
+  }
+}
+function score() {
+  const st = S.stats;
+  const dragons = S.dragons.reduce((a, d) => a + RARITY[d.rar].rv * 100 + d.lvl * 15, 0);
+  const parts = {
+    'Ouro ganho': Math.floor(st.goldEarned / 10),
+    'Dragões': dragons,
+    'Espécies descobertas': Object.keys(S.dex).length * 150,
+    'Conquistas': Object.keys(S.ach).length * 250,
+    'Arena': (Math.min(S.league, 9) - 1) * 600 + S.leagueFight * 200 + st.battlesWon * 40,
+    'Ancestral adormecido': st.bossDefeated ? 2000 : 0,
+    'Invasão Final': S.mode === 'infinito'
+      ? st.finalWins * 12000 + st.finalPerfect * 3000 + (S.finalResult && !S.finalResult.win ? Math.round(S.finalResult.dmgPct * 6000) : 0)
+      : S.finalResult ? (S.finalResult.win ? 12000 + (S.finalResult.lost === 0 ? 3000 : 0) : Math.round(S.finalResult.dmgPct * 6000)) * modeFactor() : 0,
+    'Nível do jogador': S.level * 200,
+    'Missões': st.missionsDone * 100,
+  };
+  return { parts, total: Object.values(parts).reduce((a, b) => a + b, 0) };
+}
+function rankFor(total) {
+  const f = modeFactor();
+  const T = [['S', 60000], ['A', 35000], ['B', 18000], ['C', 8000]];
+  for (const [r, v] of T) if (total >= v * f) return r;
+  return 'D';
+}
+
+// ============================================================
+// LAÇO PRINCIPAL
+// ============================================================
+let last = performance.now();
+function tick() {
+  const now = performance.now();
+  const dt = Math.min(2, (now - last) / 1000);
+  last = now;
+  if (!S || !S.running || S.paused || S.ended) { render(); return; }
+  if (S.finalPhase) {
+    if (S.battle && !S.battle.over && S.autoBattle && S.tab === 'arena') {
+      autoAcc += dt;
+      if (autoAcc >= 1.1) { autoAcc = 0; const B = S.battle; playerMove(bestMove(B.team[B.pi], B.foes[B.ei])); }
+    }
+    checkAchievements(); render(); runFx();
+    return;
+  }
+  S.t += dt;
+  const left = invadeAt() - S.t;
+  for (const w of [300, 120, 60, 30]) {
+    if (left <= w && !S.warned.includes(w)) {
+      S.warned.push(w);
+      toast('☠️ O chão treme…', `O Dragão Ancestral desperta em ${w >= 60 ? w / 60 + ' min' : w + 's'}. Prepare seu time!`, 'bad warn');
+      const inten = { 300: 0.25, 120: 0.5, 60: 0.75, 30: 1 }[w];
+      sfx('tremor', { intensidade: inten }); tension(inten);
+    }
+  }
+  if (left <= 0) { startFinal(); render(); return; }
+  const gm = goldMult(), fm = farmMult();
+  S.habitats.forEach((h, i) => {
+    const g = habGps(i);
+    const cap = Math.max(50, g * 60);
+    h.stored = Math.min(cap, h.stored + g * gm * dt);
+  });
+  S.farms.forEach(f => { if (f.crop) f.prog = Math.min(CROPS[f.crop].dur, f.prog + dt * fm); });
+  S.eggs.forEach(e => {
+    e.prog = Math.min(e.dur, e.prog + dt);
+    if (e.prog >= e.dur && !e.rang) { e.rang = true; sfx('ovoPronto'); }
+  });
+  S.stats.peakGps = Math.max(S.stats.peakGps, totalGps());
+  if (S.t - S.history[S.history.length - 1].t >= 5) {
+    S.history.push({ t: S.t, earned: S.stats.goldEarned, gps: totalGps() });
+    if (S.history.length > 800) S.history.splice(1, 1);
+  }
+  if (S.t >= S.nextEvent) triggerEvent();
+  if (S.lostEgg && S.t > S.lostEgg.until) S.lostEgg = null;
+  if (S.battle && !S.battle.over && S.autoBattle && S.tab === 'arena') {
+    autoAcc += dt;
+    if (autoAcc >= 1.1) { autoAcc = 0; const B = S.battle; playerMove(bestMove(B.team[B.pi], B.foes[B.ei])); }
+  }
+  checkAchievements();
+  render();
+  runFx();
+}
+let autoAcc = 0;
+// Peso do modo na pontuação: 1 = 20 min. No Infinito, cresce com o tempo jogado.
+function modeFactor() { const d = MODES[S.mode].dur; return d ? d / 1200 : Math.max(0.5, S.t / 1200); }
+const invadeAt = () => MODES[S.mode].dur || S.nextInvasion;
+function startFinal() {
+  S.finalPhase = true; S.t = invadeAt();
+  sfx('despertar'); music('invasao');
+  if (S.battle && !S.battle.over) S.stats.battles--;
+  S.battle = null; S.lastResult = null; S.lostEgg = null; S.event = null; S.buffs = {}; S.tab = 'arena'; S.autoBattle = false;
+  overlay(`<div class="card hero">${dIcon(['trevas', 'fogo'], 'L', 'xl', 'pop', 5)}
+    <h1>O Dragão Ancestral despertou!</h1>
+    <p>Ele voa em direção à ilha. Escolha até 3 dragões para a batalha final. Tudo o que você construiu decide este momento.</p>
+    <button class="btn primary" data-a="cancelEnd">Escolher meu time</button></div>`);
+}
+
+function startGame(mode) {
+  tension(0); music('ilha');
+  S = newState(mode);
+  addDragon(speciesFromEls(['fogo']));
+  S.missions = initialMissions();
+  S.team = [S.dragons[0].id];
+  last = performance.now();
+  overlay('');
+  render(true);
+  toast('Bem-vindo à ilha!', 'Clique no habitat para coletar ouro e plante trigo na fazenda.');
+}
+function endGame() {
+  if (!S || S.ended) return;
+  S.ended = true; S.running = false;
+  checkAchievements();
+  const won = S.finalResult ? S.finalResult.win : (S.mode === 'infinito' && S.stats.finalWins > 0);
+  sfx(won ? 'finalVitoria' : 'finalDerrota'); tension(0);
+  setTimeout(() => music('placar'), 1800);
+  renderEnd();
+}
+function togglePause() {
+  if (!S || S.ended) return;
+  S.paused = !S.paused;
+  try { if (S.paused) { sfx('pausar'); Som.pausar(); } else { Som.retomar(); sfx('retomar'); } } catch (e) { /* áudio é opcional */ }
+  if (S.paused) overlay(`<div class="card hero"><h1>Pausado</h1><p>O relógio está parado. A ilha espera por você.</p><button class="btn primary" data-a="pause">Continuar</button></div>`);
+  else { overlay(''); last = performance.now(); }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S && S.running && !S.paused && !S.ended) togglePause();
+});
+
+// ============================================================
+// INTERFACE
+// ============================================================
+// Atualiza o DOM no lugar (sem recriar nós iguais), para as animações dos dragões não reiniciarem a cada quadro
+function morph(root, html) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  patchChildren(root, tpl.content);
+}
+function patchChildren(a, b) {
+  const bn = [...b.childNodes];
+  bn.forEach((nb, i) => { const na = a.childNodes[i]; if (!na) a.appendChild(nb); else patchNode(na, nb); });
+  while (a.childNodes.length > bn.length) a.removeChild(a.lastChild);
+}
+function patchNode(a, b) {
+  if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) { a.replaceWith(b); return; }
+  if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  patchChildren(a, b);
+}
+function overlay(html) { $('#overlay').innerHTML = html ? `<div class="overlay">${html}</div>` : ''; }
+function toast(title, sub = '', cls = '') {
+  const box = $('#toasts');
+  if (cls === 'bad') sfx('erro');
+  if ([...box.children].some(c => c.dataset.title === title)) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + cls;
+  el.dataset.title = title;
+  el.innerHTML = `${title}${sub ? `<small>${sub}</small>` : ''}`;
+  box.appendChild(el);
+  while (box.children.length > (innerWidth < 560 ? 3 : 5)) box.firstChild.remove();
+  setTimeout(() => el.remove(), 3800);
+}
+function floatText(txt, x, y, color) {
+  const el = document.createElement('div');
+  el.className = 'float'; el.textContent = txt;
+  el.style.left = (x - 20) + 'px'; el.style.top = (y - 20) + 'px';
+  if (color) el.style.color = color;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 900);
+}
+function dIcon(els, rar, size = 'm', extra = '', seed) {
+  if (seed === undefined) seed = els.join('').length * 7 + rar.charCodeAt(0);
+  return `<span class="dic ${size} r-${rar} ${extra}">${dragonSVG(els, rar, seed)}<span class="els">${els.map(e => EL[e].i).join('')}</span></span>`;
+}
+// Mistura uma cor hex com preto (f < 0) ou branco (f > 0)
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f));
+  return '#' + ch.map(c => c.toString(16).padStart(2, '0')).join('');
+}
+const RING = { C: '#b9b3cc', R: '#4fb3ff', E: '#c77dff', L: '#ffb703' };
+const dgCache = new Map();
+// Dragão desenhado em SVG (viewBox 120x100, olhando para a direita). Partes animadas por CSS:
+// .all (flutuar), .wing (bater asas), .tail (balançar), .head (cabeça), .eye (piscar) e acessórios por elemento.
+function dragonSVG(els, rar, seed = 0) {
+  const key = els.join('+') + rar + (seed % 9);
+  if (dgCache.has(key)) return dgCache.get(key);
+  const O = '#1b1230', sw = 'stroke="#1b1230" stroke-width="2" stroke-linejoin="round"';
+  const c1 = EL[els[0]].c, c2 = EL[els[1] || els[0]].c;
+  const body = c1, dark = shade(c1, -0.35), belly = shade(c2, 0.5), wing = shade(c2, -0.08), wingD = shade(c2, -0.42);
+  const horn = rar === 'L' ? '#ffd166' : '#f1e4c6';
+  const has = e => els.includes(e);
+  const tier = { C: 0, R: 1, E: 2, L: 3 }[rar];
+  const top = x => 60 - 17 * Math.sqrt(Math.max(0, 1 - ((x - 56) / 27) ** 2));
+  const dl = -((seed * 0.37) % 2).toFixed(2);
+  const WING = 'M50,50 C40,32 40,14 50,-2 C54,10 60,12 67,8 C65,19 69,25 77,27 C67,36 58,44 50,50Z';
+  const RIBS = 'M50,50 L50,-2 M50,50 L67,8 M50,50 L77,27';
+  const ws = tier >= 2 ? 'transform="translate(50 50) scale(1.18) translate(-50 -50)"' : '';
+  let g = `<svg class="dg" viewBox="-6 -8 132 108" style="--dl:${dl}s" aria-hidden="true">`;
+  g += `<ellipse class="shadow" cx="58" cy="94" rx="34" ry="5"/>`;
+  g += `<ellipse class="base" cx="58" cy="94" rx="28" ry="3" fill="${RING[rar]}" opacity=".55"/>`;
+  if (tier === 3) g += `<circle class="aura" cx="60" cy="50" r="50" fill="${c1}" opacity=".2"/>`;
+  g += '<g class="all">';
+  // asa de trás
+  g += `<g class="wing wing-b"><g transform="translate(-9 3)"><path d="${WING}" fill="${wingD}" ${sw} ${ws}/></g></g>`;
+  // cauda + ponta por elemento
+  g += `<g class="tail"><path d="M36,56 C22,58 14,52 10,40 C9,36 6,34 3,37 C6,40 6,44 9,50 C14,62 24,68 38,68Z" fill="${body}" ${sw}/>`;
+  if (tier >= 1) g += `<path d="M18,56 l-2,-7 l6,4Z M26,61 l-1,-7 l6,4Z" fill="${dark}" ${sw}/>`;
+  if (has('fogo')) g += `<g class="flame"><path d="M3,38 C-4,30 0,22 5,14 C5,23 12,24 10,33 C9,38 6,40 3,38Z" fill="#ff8c1a" ${sw}/><path d="M5,35 C2,31 4,27 6,23 C7,28 10,29 8,34Z" fill="#ffe066"/></g>`;
+  if (has('eletrico')) g += `<path class="zap" d="M8,36 L0,27 L6,27 L1,15 L12,29 L6,29 L11,36Z" fill="#ffe14d" ${sw}/>`;
+  if (has('planta')) g += `<path d="M4,37 C-4,32 -6,24 -4,18 C2,22 8,28 4,37Z" fill="#5fd068" ${sw}/><path d="M4,36 L-3,21" stroke="#2f7d38" stroke-width="1.2"/>`;
+  if (has('agua')) g += `<path d="M5,38 C-2,42 -6,38 -6,32 C-1,34 2,32 4,28Z" fill="#7cc8ff" ${sw}/>`;
+  if (has('trevas')) g += `<path d="M4,37 l-8,-6 l9,0 l-6,-9 l9,7Z" fill="#5b3aa8" ${sw}/>`;
+  g += '</g>';
+  // pata de trás
+  g += `<path d="M40,70 L37,85 Q42,88 48,85 L51,72Z" fill="${dark}" ${sw}/>`;
+  // corpo e barriga
+  g += `<ellipse cx="56" cy="60" rx="27" ry="17" fill="${body}" ${sw}/>`;
+  g += `<path d="M36,66 Q56,80 78,64 Q74,74 58,76 Q42,76 36,66Z" fill="${belly}"/>`;
+  g += `<path d="M46,70 Q47,73 46,75 M54,71 Q55,74 54,77 M62,70 Q63,73 62,76 M70,67 Q71,70 70,73" stroke="${shade(c2, 0.1)}" stroke-width="1.3" fill="none"/>`;
+  // costas: espinhos (Raro+) e acessórios de elemento
+  if (tier >= 1) {
+    [34, 43, 52, 61, 70].forEach(x => { const y = top(x + 3); g += `<path d="M${x},${y + 2} L${x + 3},${y - 8 - tier} L${x + 7},${y + 2}Z" fill="${tier === 3 ? '#ffd166' : dark}" ${sw}/>`; });
+  }
+  if (has('planta')) g += `<path d="M44,45 C46,34 54,30 60,28 C58,36 52,42 44,45Z" fill="#5fd068" ${sw}/><path d="M60,44 C64,36 70,34 76,34 C72,40 68,44 60,44Z" fill="#7fe08a" ${sw}/>`;
+  if (has('terra')) g += `<path d="M40,47 l5,-7 l7,1 l2,7Z M56,44 l4,-8 l8,2 l1,8Z" fill="#9b7a55" ${sw}/>`;
+  if (has('gelo')) g += `<path d="M42,46 l3,-13 l4,13Z M50,44 l4,-17 l4,17Z M60,44 l3,-12 l4,12Z" fill="#dff7ff" ${sw}/>`;
+  if (has('metal')) g += `<path d="M42,52 Q56,46 70,52 L70,60 Q56,55 42,60Z" fill="#c9d1dc" ${sw}/><circle cx="47" cy="55" r="1.6" fill="${O}"/><circle cx="56" cy="52" r="1.6" fill="${O}"/><circle cx="65" cy="55" r="1.6" fill="${O}"/>`;
+  if (has('agua')) g += `<path d="M44,46 C48,34 58,30 66,34 C60,36 56,42 54,46Z" fill="#7cc8ff" ${sw}/>`;
+  // pata da frente com garras
+  g += `<path d="M62,72 L60,87 Q66,90 72,87 L73,72Z" fill="${body}" ${sw}/><path d="M61,88 l-1,3 M65,89 l0,3 M69,89 l1,3" stroke="${O}" stroke-width="1.6"/>`;
+  // cabeça
+  g += '<g class="head">';
+  g += `<path d="M70,52 C74,44 78,40 82,36 L93,44 C86,50 82,56 76,63Z" fill="${body}" ${sw}/>`;
+  g += `<path d="M82,28 C80,18 76,13 69,11 C76,17 78,24 86,27Z" fill="${horn}" ${sw}/>`;
+  g += `<path d="M90,26 C91,16 89,11 86,5 C94,12 97,19 96,27Z" fill="${horn}" ${sw}/>`;
+  if (has('gelo')) g += `<path d="M86,6 l-3,-7 l6,3Z M70,11 l-6,-4 l7,-1Z" fill="#dff7ff" ${sw}/>`;
+  if (tier >= 2) g += `<path d="M76,30 L66,27 L74,35Z M75,37 L64,37 L74,42Z" fill="${tier === 3 ? '#ffd166' : wing}" ${sw}/>`;
+  g += `<ellipse cx="88" cy="36" rx="14" ry="12" fill="${body}" ${sw}/>`;
+  g += `<ellipse cx="101" cy="41" rx="10" ry="7" fill="${body}" ${sw}/>`;
+  g += `<path d="M93,46 Q101,49 109,43" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  g += `<path d="M99,47 l1,3 l2,-3Z" fill="#fff"/>`;
+  g += `<circle cx="106" cy="38" r="1.3" fill="${O}"/>`;
+  if (has('metal')) g += `<path d="M80,30 Q90,22 99,30 L97,33 Q90,27 82,33Z" fill="#c9d1dc" ${sw}/>`;
+  if (has('agua')) g += `<path d="M78,40 C70,41 67,35 69,30 C73,34 77,34 80,36Z" fill="#7cc8ff" ${sw}/><circle class="drip" cx="104" cy="49" r="1.6" fill="#7cc8ff"/>`;
+  if (has('fogo')) g += `<path class="wisp" d="M108,36 q3,-3 1,-6 q3,-2 2,-5" stroke="#ff9f1c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  const pupil = has('trevas') ? '#c084fc' : has('luz') ? '#ffb703' : O;
+  g += `<g class="eye"><ellipse cx="90" cy="33" rx="4.6" ry="5.2" fill="#fff" ${sw.replace('2"', '1.5"')}/><circle cx="91.6" cy="33.5" r="2.5" fill="${pupil}"/><circle cx="92.6" cy="32" r=".9" fill="#fff"/></g>`;
+  g += `<path d="M84,26 Q90,23 95,27" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  if (tier === 3) g += `<path class="halo" d="M80,22 l2,-10 l4,6 l4,-10 l4,10 l4,-6 l1,10Z" fill="#ffd166" ${sw}/>`;
+  g += '</g>';
+  // asa da frente
+  g += `<g class="wing"><g ${ws}><path d="${WING}" fill="${wing}" ${sw}/><path d="${RIBS}" stroke="${wingD}" stroke-width="1.6" fill="none"/></g></g>`;
+  // efeitos ao redor
+  if (has('trevas')) g += `<g class="wisp"><path d="M24,30 q-4,-6 0,-12 q4,-6 0,-12" stroke="#a78bfa" stroke-width="2" fill="none" opacity=".8"/><path d="M104,62 q-3,-5 0,-10 q3,-5 0,-10" stroke="#a78bfa" stroke-width="2" fill="none" opacity=".6"/></g>`;
+  if (has('luz')) [[16, 18], [110, 14], [28, 84], [112, 70]].forEach(([x, y]) => { g += `<path class="spark" d="M${x},${y - 5} L${x + 1.4},${y - 1.4} L${x + 5},${y} L${x + 1.4},${y + 1.4} L${x},${y + 5} L${x - 1.4},${y + 1.4} L${x - 5},${y} L${x - 1.4},${y - 1.4}Z" fill="#fff6b0"/>`; });
+  if (has('eletrico')) g += `<path class="zap" d="M100,64 l4,6 l-3,0 l4,7" stroke="#ffe14d" stroke-width="2" fill="none"/>`;
+  g += '</g></svg>';
+  dgCache.set(key, g);
+  return g;
+}
+const elTags = els => els.map(e => `${EL[e].i} ${EL[e].n}`).join(' · ');
+const costTag = (n, kind = 'g') => `<span class="cost ${kind}">${kind === 'g' ? '🪙' : kind === 'f' ? '🍖' : '💎'} ${fmt(n)}</span>`;
+
+const TABS = [
+  ['ilha', '🏝️', 'Ilha'], ['dragoes', '🐉', 'Dragões'], ['cruzar', '💞', 'Cruzar'], ['chocadeira', '🥚', 'Chocadeira'], ['arena', '⚔️', 'Arena'],
+  ['missoes', '📜', 'Missões'], ['loja', '🛒', 'Loja'], ['conquistas', '🏆', 'Conquistas'], ['stats', '📊', 'Estatísticas'],
+];
+const TAB_TITLE = Object.fromEntries(TABS.map(t => [t[0], t[2]]));
+let lastTop = '', lastTabs = '', lastView = '', lastMap = '', lastHud = '', mapCentered = false;
+function render(force) {
+  if (!S) return;
+  if (force) { lastTop = lastTabs = lastView = lastMap = lastHud = ''; }
+  const top = renderTop();
+  if (top !== lastTop) { morph($('#top'), top); lastTop = top; }
+  const tabs = renderTabs();
+  if (tabs !== lastTabs) { morph($('#tabs'), tabs); lastTabs = tabs; }
+  const map = viewMap();
+  if (map !== lastMap) {
+    morph($('#map'), map); lastMap = map;
+    if (!mapCentered) { const w = $('#mapwrap'); w.scrollLeft = (w.scrollWidth - w.clientWidth) / 2; mapCentered = true; }
+  }
+  const hud = viewHud();
+  if (hud !== lastHud) { morph($('#hud'), hud); lastHud = hud; }
+  const view = S.tab === 'ilha' ? '' : `<div class="sheet-back" data-a="tab" data-k="ilha"></div><section class="sheet" role="dialog" aria-label="${TAB_TITLE[S.tab]}">
+    <header><h2>${TABS.find(t => t[0] === S.tab)[1]} ${TAB_TITLE[S.tab]}</h2><button class="btn" data-a="tab" data-k="ilha" aria-label="Fechar">✕ Fechar</button></header>
+    <div class="sheet-body">${renderView()}</div></section>`;
+  if (view !== lastView) {
+    morph($('#sheet'), view); lastView = view;
+    if (S.tab === 'stats') drawChart();
+    const log = document.querySelector('.log'); if (log) log.scrollTop = log.scrollHeight;
+  }
+  renderLostEgg();
+}
+function renderTop() {
+  const left = invadeAt() - S.t;
+  const hurry = left < 60;
+  const buffs = [];
+  if (S.buffs.chuva > S.t) buffs.push(`🌧️ Ouro x2 · ${Math.ceil(S.buffs.chuva - S.t)}s`);
+  if (S.buffs.colheita > S.t) buffs.push(`🌻 Fazendas x3 · ${Math.ceil(S.buffs.colheita - S.t)}s`);
+  if (S.event && S.event.until > S.t && ['selvagem', 'mercador'].includes(S.event.type)) buffs.push(`${EVENTS[S.event.type].i} ${EVENTS[S.event.type].n} · ${Math.ceil(S.event.until - S.t)}s`);
+  return `<div class="wrap">
+    <div class="brand">🐉 Dragões Relâmpago</div>
+    <div class="res gold" title="Ouro"><span>🪙</span><b class="num">${fmt(S.gold)}</b><small class="num">+${fmt(totalGps())}/s</small></div>
+    <div class="res food" title="Comida"><span>🍖</span><b class="num">${fmt(S.food)}</b></div>
+    <div class="res gem" title="Gemas"><span>💎</span><b class="num">${fmt(S.gems)}</b></div>
+    <div class="lvl" title="Nível do jogador"><span>Nível ${S.level} <span class="muted num">${S.level >= MAX_PLVL ? 'máx.' : `${fmt(S.xp)}/${fmt(xpNeed(S.level))} XP`}</span></span><div class="bar"><i style="width:${S.level >= MAX_PLVL ? 100 : pct(S.xp, xpNeed(S.level))}%"></i></div></div>
+    <div class="timer num ${hurry ? 'hurry' : ''}" title="O Dragão Ancestral desperta quando o tempo acabar">☠️ ${S.finalPhase ? 'DESPERTOU' : fmtTime(left)}${S.mode === 'infinito' ? ` · onda ${S.wave + 1}` : ''}</div>
+    <button class="iconbtn" data-a="pause">Pausar</button>
+    <button class="iconbtn" data-a="askEnd">Encerrar</button>
+    ${buffs.length ? `<div class="buffs" style="width:100%">${buffs.map(b => `<span class="buff">${b}</span>`).join('')}</div>` : ''}
+  </div>`;
+}
+function renderTabs() {
+  const claim = S.missions.filter(m => missionProg(m) >= m.target).length;
+  const readyEggs = S.eggs.filter(e => e.prog >= e.dur).length;
+  const badges = { missoes: claim, chocadeira: readyEggs };
+  return TABS.map(([k, ic, n]) => `<button class="tab" aria-selected="${S.tab === k}" data-a="tab" data-k="${k}"><span class="ic">${ic}</span>${n}${badges[k] ? `<span class="badge">${badges[k]}</span>` : ''}</button>`).join('');
+}
+function renderView() {
+  switch (S.tab) {
+    case 'chocadeira': return viewHatchery();
+    case 'dragoes': return viewDragons();
+    case 'cruzar': return viewBreed();
+    case 'arena': return viewArena();
+    case 'missoes': return viewMissions();
+    case 'loja': return viewShop();
+    case 'conquistas': return viewAch();
+    case 'stats': return viewStats();
+  }
+  return '';
+}
+function viewHatchery() {
+  const eggs = S.eggs.map(e => {
+    const ready = e.prog >= e.dur;
+    return `<div class="egg ${ready ? 'ready' : ''}"><span class="shell">🥚</span>
+      <b class="rar-${e.sp.rar}">${S.dex[e.sp.key] ? e.sp.name : 'Espécie desconhecida'}</b>
+      <span class="muted">${RARITY[e.sp.rar].n}${e.free ? ' · bônus' : ''}</span>
+      ${ready ? `<button class="btn primary small" data-a="hatch" data-id="${e.id}">Chocar</button>`
+        : `<div class="bar blue" style="width:100%"><i style="width:${pct(e.prog, e.dur)}%"></i></div><button class="btn gemb small" data-a="speed" data-id="${e.id}">Acelerar 💎 ${speedCost(e)}</button>`}
+    </div>`;
+  }).join('');
+  const freeSlots = Math.max(0, S.hatchSlots - S.eggs.filter(e => !e.free).length);
+  const empties = '<div class="egg empty">Espaço livre<br>Cruze dragões para pôr um ovo</div>'.repeat(freeSlots);
+  const hc = HATCH_COSTS[S.hatchSlots - 1];
+  return `<section class="panel">
+    <div class="panel-head"><h2>Ovos <span class="muted num" style="font-size:.9rem">${S.eggs.filter(e => !e.free).length}/${S.hatchSlots}</span></h2>
+      <div class="row">${hc !== undefined ? `<button class="btn small" data-a="buyHatch">+ Espaço ${costTag(hc)}</button>` : ''}<button class="btn small" data-a="tab" data-k="cruzar">Ir para Cruzar</button></div></div>
+    <div class="eggs">${eggs}${empties}</div>
+    <p class="hint" style="margin:0">Um ovo pronto precisa de uma vaga livre num habitat para chocar.</p>
+  </section>`;
+}
+
+// ============================================================
+// ILHA ISOMÉTRICA (SVG 1000x600). Grade de 14x14 lotes em losango, 2:1.
+// ============================================================
+const TW = 64, TH = 32, OX = 500, OY = 68, NG = 14;
+const iso = (x, y) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2];
+const HAB_LOTS = [[4.5, 4.5], [7.5, 4.5], [4.5, 7.5], [7.5, 7.5], [1.5, 7.5], [10.5, 7.5], [1.5, 10.5], [4.5, 10.5], [7.5, 10.5], [10.5, 10.5]];
+const FARM_LOTS = Array.from({ length: 12 }, (_, i) => [i + 1.5, 12.9]);
+const SPOTS = {
+  missoes: { at: [1.5, 1.5], n: 'Mural de Missões' },
+  cruzar: { at: [4.5, 1.5], n: 'Montanha do Amor' },
+  chocadeira: { at: [7.5, 1.5], n: 'Chocadeira' },
+  loja: { at: [1.5, 4.5], n: 'Mercado' },
+  arena: { at: [11, 3], n: 'Arena', size: 3 },
+};
+const TREES = [[13.3, 6.2], [13.3, 8.6], [12.9, 0.7], [0.5, 12.9], [13.3, 11.2], [6, 0.5], [0.5, 6]];
+const pts = arr => arr.map(p => p.map(v => Math.round(v * 10) / 10).join(',')).join(' ');
+function diamond(cx, cy, w, h) { return [iso(cx - w / 2, cy - h / 2), iso(cx + w / 2, cy - h / 2), iso(cx + w / 2, cy + h / 2), iso(cx - w / 2, cy + h / 2)]; }
+// Lote com faces laterais (altura d) — base de toda construção
+function slab(cx, cy, w, h, d, top, side1, side2, extra = '') {
+  const [t, r, b, l] = diamond(cx, cy, w, h);
+  return `<polygon points="${pts([l, b, [b[0], b[1] + d], [l[0], l[1] + d]])}" fill="${side1}"/>
+    <polygon points="${pts([b, r, [r[0], r[1] + d], [b[0], b[1] + d]])}" fill="${side2}"/>
+    <polygon class="lot" points="${pts([t, r, b, l])}" fill="${top}" stroke="rgba(0,0,0,.25)" stroke-width="1.5" ${extra}/>`;
+}
+// Rótulos e balões vão para uma camada por cima de tudo, para não ficarem escondidos atrás de outras construções
+let topLayer = [];
+function pill(x, y, txt, w) {
+  w = w || Math.max(46, txt.length * 6.6 + 14);
+  topLayer.push(`<g pointer-events="none"><rect class="pill" x="${x - w / 2}" y="${y - 10}" width="${w}" height="20" rx="10"/><text class="lbl" x="${x}" y="${y + 4}" text-anchor="middle">${txt}</text></g>`);
+  return '';
+}
+function pillInline(x, y, txt, w) {
+  w = w || Math.max(46, txt.length * 6.6 + 14);
+  return `<rect class="pill" x="${x - w / 2}" y="${y - 10}" width="${w}" height="20" rx="10"/><text class="lbl" x="${x}" y="${y + 4}" text-anchor="middle">${txt}</text>`;
+}
+function bubble(x, y, icon, full, txt, attrs = '') {
+  topLayer.push(`<g ${attrs} class="bld"><g class="bubble ${full ? 'full' : ''}"><path d="M${x - 17},${y - 34} h34 a8,8 0 0 1 8,8 v18 a8,8 0 0 1 -8,8 h-11 l-6,8 l-6,-8 h-11 a8,8 0 0 1 -8,-8 v-18 a8,8 0 0 1 8,-8Z" fill="#fff8e6" stroke="#1b1230" stroke-width="2"/>
+    <text x="${x}" y="${y - 12}" text-anchor="middle" font-size="18">${icon}</text>${txt ? `<text x="${x}" y="${y + 18}" text-anchor="middle" font-size="12" fill="#ffcc4d" stroke="#1b1230" stroke-width="3" paint-order="stroke">${txt}</text>` : ''}</g></g>`);
+  return '';
+}
+// Encaixa o SVG de um dragão dentro do mapa
+function placeDragon(d, x, y, w) {
+  const h = w * 108 / 132;
+  return dragonSVG(d.els, d.rar, d.id).replace('<svg class="dg" viewBox="-6 -8 132 108" style="', `<svg class="dg" viewBox="-6 -8 132 108" x="${Math.round(x - w / 2)}" y="${Math.round(y - h * 0.9)}" style="width:${w}px;height:${Math.round(h)}px;`);
+}
+function isoHabitat(i) {
+  const [cx, cy] = HAB_LOTS[i];
+  const [X, Y] = iso(cx, cy);
+  const ds = habDragons(i), h = S.habitats[i];
+  const el = ds.length ? ds[0].els[0] : null;
+  const col = el ? EL[el].c : '#8fbf6a';
+  const g = habGps(i), cap = Math.max(50, g * 60), full = h.stored >= cap - 0.5 && g > 0;
+  let out = `<g class="bld" data-a="collect" data-i="${i}" tabindex="0" role="button" aria-label="Habitat ${i + 1}: ${ds.length} de ${HAB_CAP} dragões, ${fmt(g)} de ouro por segundo"><title>Habitat ${i + 1} · ${ds.length}/${HAB_CAP} dragões · ${fmt(g)} ouro/s</title>`;
+  out += slab(cx, cy, 1.9, 1.9, 9, shade(col, 0.45), shade(col, -0.25), shade(col, -0.4));
+  out += `<ellipse cx="${X + 20}" cy="${Y + 6}" rx="15" ry="7" fill="${shade(col, 0.1)}" stroke="rgba(0,0,0,.2)"/>`;
+  out += `<path d="M${X - 40},${Y - 2} l3,-9 l3,9 M${X - 32},${Y + 4} l3,-8 l3,8" stroke="#2f6b2a" stroke-width="2" fill="none"/>`;
+  const spots = [[-22, -2], [6, -12], [2, 12]];
+  ds.map((d, k) => ({ d, o: spots[k] })).sort((a, b) => a.o[1] - b.o[1]).forEach(({ d, o }) => {
+    out += `<g class="roam" style="animation-delay:${-((d.id * 1.7) % 7).toFixed(1)}s">${placeDragon(d, X + o[0] * 1.15, Y + o[1] * 1.15, 70)}</g>`;
+  });
+  if (h.stored >= 1) out += bubble(X + 34, Y - 52, '🪙', full, fmt(h.stored), `data-a="collect" data-i="${i}"`);
+  return out + '</g>';
+}
+function isoGhost(cx, cy, size, action, label) {
+  const [X, Y] = iso(cx, cy);
+  return `<g class="bld ghost" data-a="${action}" tabindex="0" role="button" aria-label="${label}">
+    <polygon class="lot" points="${pts(diamond(cx, cy, size, size))}" fill="rgba(255,255,255,.12)" stroke="#fff" stroke-width="2" stroke-dasharray="6 5"/>
+    ${pillInline(X, Y + 4, label)}</g>`;
+}
+function isoFarm(i) {
+  const [cx, cy] = FARM_LOTS[i];
+  const [X, Y] = iso(cx, cy);
+  const f = S.farms[i];
+  let out = `<g class="bld" data-a="farm" data-i="${i}" tabindex="0" role="button" aria-label="Fazenda ${i + 1}">`;
+  out += slab(cx, cy, 0.92, 0.92, 6, '#7a5230', '#5a3a20', '#4a2f19');
+  out += `<path d="M${X - 18},${Y - 3} l14,7 M${X - 10},${Y - 7} l14,7 M${X - 2},${Y - 11} l14,7 M${X - 12},${Y + 3} l14,7" stroke="#5a3a20" stroke-width="2"/>`;
+  if (!f.crop) out += `<text x="${X}" y="${Y + 5}" text-anchor="middle" font-size="13" opacity=".7">${CROPS[S.selCrop].i}</text>`;
+  else {
+    const c = CROPS[f.crop], p = f.prog / c.dur;
+    if (p >= 1) out += `<g class="ready-crop"><text x="${X}" y="${Y + 4}" text-anchor="middle" font-size="26">${c.i}</text></g>${bubble(X, Y - 26, '✋', true, '', `data-a="farm" data-i="${i}"`)}`;
+    else {
+      const sc = 0.4 + 0.6 * p;
+      out += `<g transform="translate(${X} ${Y + 2}) scale(${sc.toFixed(2)})"><path d="M0,0 C0,-10 -2,-16 0,-22" stroke="#3fae4a" stroke-width="3" fill="none"/><path d="M0,-12 C-10,-14 -12,-20 -12,-24 C-4,-22 0,-18 0,-12Z M0,-16 C8,-18 12,-24 12,-28 C4,-26 0,-22 0,-16Z" fill="#5fd068" stroke="#2f7d38"/></g>`;
+      out += `<rect x="${X - 16}" y="${Y + 10}" width="32" height="5" rx="2.5" fill="rgba(0,0,0,.5)"/><rect x="${X - 16}" y="${Y + 10}" width="${Math.round(32 * p)}" height="5" rx="2.5" fill="#84e08a"/>`;
+    }
+  }
+  return out + '</g>';
+}
+function isoSpecial(k) {
+  const sp = SPOTS[k], [cx, cy] = sp.at, size = sp.size || 2;
+  const [X, Y] = iso(cx, cy);
+  let out = `<g class="bld" data-a="tab" data-k="${k}" tabindex="0" role="button" aria-label="Abrir ${sp.n}">`;
+  if (k === 'arena') {
+    out += slab(cx, cy, 2.9, 2.9, 10, '#c9b48a', '#8f7a52', '#7a6744');
+    out += `<ellipse cx="${X}" cy="${Y}" rx="70" ry="35" fill="#a8895a" stroke="#1b1230" stroke-width="2"/>`;
+    out += `<path d="M${X - 70},${Y} v-30 a70,35 0 0 1 140,0 v30 a70,35 0 0 0 -140,0Z" fill="#d9c49a" stroke="#1b1230" stroke-width="2"/>`;
+    for (let a = 0; a < 7; a++) { const x = X - 58 + a * 19.3; out += `<path d="M${x - 5},${Y - 6 + Math.abs(a - 3) * 2} v-14 a5,5 0 0 1 10,0 v14Z" fill="#5c4630"/>`; }
+    out += `<ellipse cx="${X}" cy="${Y - 30}" rx="56" ry="26" fill="#e8d9b0" stroke="#1b1230" stroke-width="2"/><ellipse cx="${X}" cy="${Y - 28}" rx="40" ry="17" fill="#d6b56d"/>`;
+    [[-62, -40], [62, -40], [0, -72]].forEach(([dx, dy], n) => { out += `<path d="M${X + dx},${Y + dy + 26} v-30" stroke="#3b2a1a" stroke-width="2.5"/><path class="flag" d="M${X + dx},${Y + dy - 4} l18,5 l-18,6Z" fill="${['#ff7a3d', '#62e3ff', '#ffcc4d'][n]}" stroke="#1b1230" stroke-width="1.5"/>`; });
+    const alert = S.finalPhase ? '☠️' : (S.event && S.event.type === 'selvagem' && S.event.until > S.t) ? '🐲' : (S.battle && !S.battle.over) ? '⚔️' : '';
+    if (alert) out += bubble(X + 50, Y - 78, alert, true, '', 'data-a="tab" data-k="arena"');
+  } else {
+    out += slab(cx, cy, 1.9, 1.9, 9, '#c8d6a0', '#7f9358', '#6b7d48');
+    if (k === 'cruzar') {
+      out += `<polygon points="${X - 46},${Y + 6} ${X - 14},${Y - 62} ${X + 14},${Y + 10}" fill="#b07ad6" stroke="#1b1230" stroke-width="2"/>
+        <polygon points="${X - 6},${Y + 10} ${X + 22},${Y - 46} ${X + 48},${Y + 4}" fill="#d39bff" stroke="#1b1230" stroke-width="2"/>
+        <polygon points="${X - 22},${Y - 46} ${X - 14},${Y - 62} ${X - 6},${Y - 46} ${X - 14},${Y - 42}" fill="#fff"/>
+        <path class="heart" d="M${X + 4},${Y - 70} c-6,-8 -18,-2 -10,8 l10,10 l10,-10 c8,-10 -4,-16 -10,-8Z" fill="#ff5d8f" stroke="#1b1230" stroke-width="2"/>`;
+    } else if (k === 'chocadeira') {
+      out += `<ellipse cx="${X}" cy="${Y + 4}" rx="40" ry="16" fill="#8a6a3a" stroke="#1b1230" stroke-width="2"/>
+        <path d="M${X - 30},${Y + 2} C${X - 34},${Y - 44} ${X - 14},${Y - 70} ${X},${Y - 70} C${X + 14},${Y - 70} ${X + 34},${Y - 44} ${X + 30},${Y + 2}Z" fill="#fff3d6" stroke="#1b1230" stroke-width="2"/>
+        <circle cx="${X - 10}" cy="${Y - 40}" r="5" fill="#ffb35c"/><circle cx="${X + 12}" cy="${Y - 24}" r="6" fill="#62e3ff"/><circle cx="${X + 6}" cy="${Y - 52}" r="4" fill="#c77dff"/>
+        <path d="M${X - 9},${Y + 4} v-16 a9,9 0 0 1 18,0 v16Z" fill="#5c4630"/>`;
+      S.eggs.slice(0, 4).forEach((e, n) => { out += `<ellipse cx="${X - 30 + n * 20}" cy="${Y + 22}" rx="6" ry="8" fill="${RING[e.sp.rar]}" stroke="#1b1230" stroke-width="1.5"/>`; });
+      const ready = S.eggs.filter(e => e.prog >= e.dur).length;
+      if (ready) out += bubble(X + 34, Y - 64, '🐣', true, String(ready), 'data-a="tab" data-k="chocadeira"');
+    } else if (k === 'loja') {
+      out += `<rect x="${X - 34}" y="${Y - 22}" width="68" height="26" fill="#8a5a2c" stroke="#1b1230" stroke-width="2"/>
+        <path d="M${X - 42},${Y - 20} L${X},${Y - 62} L${X + 42},${Y - 20}Z" fill="#fff" stroke="#1b1230" stroke-width="2"/>
+        <path d="M${X - 28},${Y - 34} L${X},${Y - 62} L${X - 12},${Y - 20}Z M${X + 12},${Y - 20} L${X},${Y - 62} L${X + 28},${Y - 34}Z" fill="#ff5d5d"/>
+        <text x="${X}" y="${Y - 2}" text-anchor="middle" font-size="16">🪙💎</text>`;
+    } else if (k === 'missoes') {
+      out += `<path d="M${X - 30},${Y + 8} v-56 M${X + 30},${Y + 8} v-56" stroke="#5c4630" stroke-width="5"/>
+        <rect x="${X - 38}" y="${Y - 58}" width="76" height="44" rx="4" fill="#b88a52" stroke="#1b1230" stroke-width="2"/>
+        <rect x="${X - 30}" y="${Y - 52}" width="18" height="22" fill="#fff8e6" transform="rotate(-6 ${X - 21} ${Y - 41})"/><rect x="${X - 8}" y="${Y - 54}" width="18" height="24" fill="#fff8e6"/><rect x="${X + 14}" y="${Y - 50}" width="16" height="20" fill="#fff8e6" transform="rotate(5 ${X + 22} ${Y - 40})"/>`;
+      const claim = S.missions.filter(m => missionProg(m) >= m.target).length;
+      if (claim) out += bubble(X + 30, Y - 68, '📜', true, String(claim), 'data-a="tab" data-k="missoes"');
+    }
+  }
+  out += pill(X, Y + (size === 3 ? 52 : 40), sp.n);
+  return out + '</g>';
+}
+function isoTree(x, y) {
+  const [X, Y] = iso(x, y);
+  return `<ellipse cx="${X}" cy="${Y + 2}" rx="12" ry="5" fill="rgba(0,0,0,.25)"/><rect x="${X - 3}" y="${Y - 16}" width="6" height="18" fill="#6b4a2b"/>
+    <circle cx="${X}" cy="${Y - 26}" r="14" fill="#3f9a4a" stroke="#1b1230" stroke-width="1.5"/><circle cx="${X - 6}" cy="${Y - 30}" r="6" fill="#5fc068"/>`;
+}
+function viewMap() {
+  topLayer = [];
+  const objs = [];
+  S.habitats.forEach((h, i) => objs.push({ d: HAB_LOTS[i][0] + HAB_LOTS[i][1], html: isoHabitat(i) }));
+  if (S.habitats.length < HAB_LOTS.length) { const [x, y] = HAB_LOTS[S.habitats.length]; objs.push({ d: x + y, html: isoGhost(x, y, 1.9, 'buyHab', `+ Habitat 🪙${fmt(habitatCost())}`) }); }
+  S.farms.forEach((f, i) => objs.push({ d: FARM_LOTS[i][0] + FARM_LOTS[i][1], html: isoFarm(i) }));
+  if (S.farms.length < FARM_LOTS.length) { const [x, y] = FARM_LOTS[S.farms.length]; objs.push({ d: x + y, html: isoGhost(x, y, 0.92, 'buyFarm', `+ 🪙${fmt(farmCost())}`) }); }
+  Object.keys(SPOTS).forEach(k => objs.push({ d: SPOTS[k].at[0] + SPOTS[k].at[1], html: isoSpecial(k) }));
+  TREES.forEach(([x, y]) => objs.push({ d: x + y, html: isoTree(x, y) }));
+  objs.sort((a, b) => a.d - b.d);
+  const [t, r, b, l] = diamond(NG / 2, NG / 2, NG, NG);
+  const [st, sr, sb, sl] = diamond(NG / 2, NG / 2, NG + 1.2, NG + 1.2);
+  let grid = '';
+  for (let k = 1; k < NG; k++) grid += `<path d="M${pts([iso(k, 0)])} L${pts([iso(k, NG)])} M${pts([iso(0, k)])} L${pts([iso(NG, k)])}"/>`;
+  const path = (x1, y1, x2, y2) => `<polygon points="${pts([iso(x1, y1), iso(x2, y1), iso(x2, y2), iso(x1, y2)])}" fill="#d9c58f" opacity=".75"/>`;
+  const fliers = [...S.dragons].sort((a, c) => RARITY[c.rar].rv - RARITY[a.rar].rv || c.lvl - a.lvl).slice(0, Math.min(2, Math.floor(S.dragons.length / 3)));
+  const flyPath = ['M500,40 C860,40 990,250 760,420 C520,580 120,470 90,260 C70,110 260,40 500,40Z', 'M520,560 C200,560 40,380 160,200 C260,60 760,20 900,200 C1000,340 820,560 520,560Z'];
+  return `<svg class="iso" viewBox="0 0 1000 600" role="img" aria-label="Mapa da ilha">
+    <defs><linearGradient id="isoSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a7fb8"/><stop offset="1" stop-color="#154a78"/></linearGradient></defs>
+    <rect width="1000" height="600" fill="url(#isoSea)"/>
+    <g stroke="#9fd6ff" stroke-width="2" stroke-linecap="round" fill="none" opacity=".45">
+      ${[[90, 90], [880, 120], [60, 420], [900, 470], [300, 560], [700, 40], [160, 250], [860, 320]].map(([x, y], n) => `<path class="wave" style="animation-delay:${-n * 0.7}s" d="M${x},${y} q10,-6 20,0 t20,0"/>`).join('')}
+    </g>
+    <polygon points="${pts([st, sr, sb, sl])}" fill="#e8d49a" transform="translate(0 6)"/>
+    <polygon points="${pts([l, b, [b[0], b[1] + 34], [l[0], l[1] + 34]])}" fill="#7a5532"/>
+    <polygon points="${pts([b, r, [r[0], r[1] + 34], [b[0], b[1] + 34]])}" fill="#5e3f24"/>
+    <polygon points="${pts([l, b, [b[0], b[1] + 10], [l[0], l[1] + 10]])}" fill="#4f8f3a"/>
+    <polygon points="${pts([b, r, [r[0], r[1] + 10], [b[0], b[1] + 10]])}" fill="#3f7a2e"/>
+    <polygon points="${pts([t, r, b, l])}" fill="#6cbf4f"/>
+    <g stroke="rgba(0,0,0,.07)" stroke-width="1">${grid}</g>
+    ${path(5.6, 0.4, 6.4, 13.6)}${path(0.4, 5.6, 12.6, 6.4)}${path(0.4, 8.6, 12.6, 9.4)}${path(8.6, 0.4, 9.4, 11.6)}
+    ${objs.map(o => o.html).join('')}
+    ${topLayer.join('')}
+    ${fliers.map((d, n) => `<g><animateMotion dur="${26 + n * 9}s" repeatCount="indefinite" path="${flyPath[n]}"/><ellipse cx="0" cy="44" rx="22" ry="5" fill="rgba(0,0,0,.18)"/>${placeDragon(d, 0, 0, 84)}</g>`).join('')}
+    <g fill="#fff" opacity=".55" pointer-events="none">
+      <g class="cloud"><ellipse cx="0" cy="60" rx="60" ry="18"/><ellipse cx="30" cy="48" rx="34" ry="16"/></g>
+      <g class="cloud c2"><ellipse cx="0" cy="300" rx="70" ry="20"/><ellipse cx="-30" cy="288" rx="30" ry="14"/></g>
+      <g class="cloud c3"><ellipse cx="0" cy="520" rx="50" ry="14"/></g>
+    </g>
+  </svg>`;
+}
+function viewHud() {
+  const crops = Object.entries(CROPS).filter(([k]) => unlockedCrop(k)).map(([k, c]) => `<button class="crop" aria-pressed="${S.selCrop === k}" data-a="selCrop" data-k="${k}" title="${c.n}: ${c.dur}s, +${c.food} comida, ${c.cost} ouro">${c.i} 🪙${c.cost}</button>`).join('');
+  const acts = (S.level >= 3 ? '<button class="btn small primary" data-a="harvestAll">🧺 Colher e replantar</button>' : '')
+    + (S.level >= 5 ? '<button class="btn small primary" data-a="collectAll">🪙 Coletar tudo</button>' : '');
+  return `<div class="box"><span class="hint hud-lbl" style="font-weight:800">Semente</span>${crops}</div>${acts ? `<div class="box">${acts}</div>` : ''}`;
+}
+function dragonCard(d) {
+  const maxed = d.lvl >= MAX_DLVL;
+  const fc = feedCost(d.lvl);
+  return `<div class="dcard">${dIcon(d.els, d.rar, 'm', '', d.id)}
+    <div class="info">
+      <span class="name">${d.name} <span class="muted">Nv ${d.lvl}</span></span>
+      <span class="meta"><span class="rar-${d.rar}">${RARITY[d.rar].n}</span> · ${elTags(d.els)}</span>
+      <span class="meta num">🪙 ${gpsOf(d).toFixed(1).replace('.', ',')}/s · ❤️ ${hpOf(d)} · 🗡️ ${atkOf(d)}</span>
+      <div class="row">
+        <button class="btn small" data-a="feed" data-id="${d.id}" ${maxed ? 'disabled' : ''}>${maxed ? 'Nível máximo' : `Alimentar ${costTag(fc, 'f')}`}</button>
+        <button class="btn small" data-a="sell" data-id="${d.id}">${d._confirm ? 'Confirmar venda?' : `Vender ${costTag(sellValue(d))}`}</button>
+      </div>
+    </div></div>`;
+}
+function viewDragons() {
+  const list = [...S.dragons].sort((a, b) => RARITY[b.rar].rv - RARITY[a.rar].rv || b.lvl - a.lvl).map(dragonCard).join('');
+  const found = Object.keys(S.dex).length;
+  const dex = ALL_SPECIES.map(sp => {
+    const k = !!S.dex[sp.key];
+    return `<div class="cell">${dIcon(sp.els, sp.rar, 's', k ? '' : 'unknown')}<span class="${k ? 'rar-' + sp.rar : 'muted'}">${k ? sp.name : '???'}</span></div>`;
+  }).join('');
+  return `<div class="grid">
+    <section class="panel" style="grid-column:1/-1">
+      <div class="panel-head"><h2>Seus dragões</h2><span class="hint">Alimentar sobe o nível: mais ouro, vida e ataque. Nível 3 libera o cruzamento.</span></div>
+      <div class="dlist">${list}</div>
+    </section>
+    <section class="panel" style="grid-column:1/-1">
+      <div class="panel-head"><h2>Dragonário</h2><span class="muted num">${found}/${ALL_SPECIES.length} espécies</span></div>
+      <div class="bar"><i style="width:${pct(found, ALL_SPECIES.length)}%"></i></div>
+      <div class="dex">${dex}</div>
+    </section>
+  </div>`;
+}
+function viewBreed() {
+  const a = S.dragons.find(d => d.id === S.breedA), b = S.dragons.find(d => d.id === S.breedB);
+  const slot = (d, w) => d
+    ? `<button class="parent set" data-a="clearParent" data-k="${w}">${dIcon(d.els, d.rar, 'l', '', d.id)}<span>${d.name}</span><span class="muted">Nv ${d.lvl} · toque para trocar</span></button>`
+    : `<div class="parent">Escolha o ${w === 'A' ? 'primeiro' : 'segundo'} dragão abaixo</div>`;
+  let out = '';
+  if (a && b) {
+    const os = breedOutcomes(a, b);
+    out = `<div class="outcomes">${os.map(o => `<div class="outcome">${dIcon(o.sp.els, o.sp.rar, 's', S.dex[o.sp.key] ? '' : 'unknown')}<span>${S.dex[o.sp.key] ? o.sp.name : '???'} <span class="rar-${o.sp.rar}">${RARITY[o.sp.rar].n}</span></span><span class="pct num">${Math.round(o.p * 100)}%</span></div>`).join('')}</div>
+      <div class="row"><button class="btn primary" data-a="breed">Cruzar ${costTag(breedCost(a, b))}</button><span class="hint">Chocadeira: ${S.eggs.filter(e => !e.free).length}/${S.hatchSlots}</span></div>`;
+  }
+  const chips = S.dragons.map(d => {
+    const sel = d.id === S.breedA || d.id === S.breedB;
+    return `<button class="chip" aria-pressed="${sel}" data-a="pickParent" data-id="${d.id}" ${d.lvl < 3 ? 'disabled title="Precisa de nível 3"' : ''}>${dIcon(d.els, d.rar, 's', '', d.id)}${d.name} · Nv ${d.lvl}</button>`;
+  }).join('');
+  const legends = LEGENDS.map(L => `<div class="outcome">${dIcon(L.els, 'L', 's', S.dex['L:' + L.k] ? '' : 'unknown')}<span>${S.dex['L:' + L.k] ? L.n : '???'}</span><span class="pct muted">${L.els.map(e => EL[e].i).join(' + ')} · ${Math.round(L.ch * 100)}%</span></div>`).join('');
+  return `<div class="grid">
+    <section class="panel">
+      <h2>Cruzamento</h2>
+      <div class="breedbox">${slot(a, 'A')}<div class="heart">💞</div>${slot(b, 'B')}</div>
+      ${out || '<p class="hint" style="margin:0">O filhote herda um elemento de cada pai. Pais com elementos diferentes geram híbridos raros ou épicos.</p>'}
+      <div class="chips">${chips}</div>
+    </section>
+    <section class="panel">
+      <h2>Receitas lendárias</h2>
+      <p class="hint" style="margin:0">Se os dois pais juntos tiverem os elementos da receita, existe a chance de nascer um Lendário.</p>
+      <div class="outcomes">${legends}</div>
+    </section>
+  </div>`;
+}
+function fighterView(f, side, bench, active, B) {
+  const disp = f.disp || f.els;
+  return `<div class="side" data-side="${side}">
+    <span class="muted" style="font-size:.8rem;font-weight:800">${side === 'me' ? 'SEU TIME' : f.boss ? 'CHEFE' : 'OPONENTE'}</span>
+    ${dIcon(disp, f.rar, f.boss ? 'xl' : 'l', side === 'foe' ? 'flip' : '', f.did || 3)}
+    <span class="fname">${f.name} <span class="muted">${f.boss ? '' : 'Nv ' + f.lvl}</span></span>
+    <span class="muted" style="font-size:.8rem">${f.boss ? 'Ataca com elementos aleatórios' : elTags(f.els)}</span>
+    <div class="bar hp ${f.hp / f.hpMax < 0.3 ? 'low' : ''}"><i style="width:${pct(f.hp, f.hpMax)}%"></i></div>
+    <span class="num" style="font-weight:800">${f.hp} / ${f.hpMax}</span>
+    <div class="bench">${bench.map((x, i) => i === active ? '' : `<span class="${x.hp <= 0 ? 'ko' : ''}">${dIcon(x.disp || x.els, x.rar, 's')}</span>`).join('')}</div>
+  </div>`;
+}
+function viewBattle() {
+  const B = S.battle;
+  const p = B.team[B.pi], e = B.foes[B.ei];
+  let controls;
+  if (B.over) {
+    const r = S.lastResult;
+    controls = `<div class="result"><h2>${r.win ? 'Vitória!' : 'Derrota'}</h2><p style="margin:0">${r.text}</p>
+      <div class="row" style="justify-content:center">${r.gold ? costTag(r.gold) : ''} ${r.gems ? costTag(r.gems, 'm') : ''} <span class="cost">+${r.xp} XP</span></div>
+      ${B.kind === 'final' ? `<p style="margin:0" class="muted">${S.finalResult ? `Dano causado ao Ancestral: ${Math.round(S.finalResult.dmgPct * 100)}%` : `Invasões repelidas: ${S.stats.finalWins}`}</p>${S.mode === 'infinito' && S.lastResult.win ? '<button class="btn primary" data-a="closeBattle">Voltar para a ilha</button>' : '<button class="btn primary" data-a="end">Ver placar final</button>'}` : `<button class="btn primary" data-a="closeBattle">Continuar</button>`}</div>`;
+  } else {
+    const bEl = moveEl(p, 'b'), sEl = moveEl(p, 'sp');
+    const effTxt = el => { const m = eff(el, e.els); return m > 1 ? ' · forte' : m < 1 ? ' · fraco' : ''; };
+    controls = `<div class="row" style="justify-content:center">
+      <button class="btn primary" data-a="move" data-k="b">Ataque ${EL[bEl].i}${effTxt(bEl)}</button>
+      <button class="btn primary" data-a="move" data-k="sp" ${p.cd > 0 ? 'disabled' : ''}>Especial ${EL[sEl].i} x${movePower(p, 'sp')}${p.cd > 0 ? ` (${p.cd})` : effTxt(sEl)}</button>
+      <button class="btn" data-a="auto" aria-pressed="${S.autoBattle}">${S.autoBattle ? '⏸ Auto ligado' : '▶ Batalha automática'}</button>
+      <button class="btn" data-a="surrender">Desistir</button></div>`;
+  }
+  return `<section class="panel">
+    <div class="panel-head"><h2>${B.kind === 'final' ? 'Invasão Final' : B.kind === 'boss' ? 'Ancestral adormecido' : B.kind === 'wild' ? 'Dragão selvagem' : `Liga ${LEAGUES[S.league - 1] || 'Campeões'} · luta ${S.leagueFight + 1} de 3`}</h2><span class="muted num">Turno ${B.turn}</span></div>
+    <div class="battle">${fighterView(p, 'me', B.team, B.pi, B)}${fighterView(e, 'foe', B.foes, B.ei, B)}</div>
+    ${controls}
+    <div class="log">${B.log.map(l => `<div class="${l.cls}">${l.txt}</div>`).join('')}</div>
+  </section>`;
+}
+function viewArena() {
+  if (S.battle) return viewBattle();
+  if (S.finalPhase) {
+    const chips = [...S.dragons].sort((a, b) => powerOf(b) - powerOf(a)).map(d => `<button class="chip" aria-pressed="${S.team.includes(d.id)}" data-a="team" data-id="${d.id}">${dIcon(d.els, d.rar, 's', '', d.id)}${d.name} · Nv ${d.lvl} · ⚡${powerOf(d)}</button>`).join('');
+    const boss = bossTeam(true)[0];
+    teamDragons();
+    return `<section class="panel"><div class="panel-head"><h2>Invasão Final</h2><span class="muted num">Ancestral: ❤️ ${fmt(boss.hpMax)} · 🗡️ ${boss.atk}</span></div>
+      <div class="row" style="justify-content:center">${dIcon(['trevas', 'fogo'], 'L', 'xl', 'flip', 5)}</div>
+      <p style="margin:0">O Dragão Ancestral ataca com elementos aleatórios e não tem fraquezas. Leve os seus dragões com mais vida e ataque.${S.weakened ? ' Ele está ferido: você o enfrentou na Arena, e ele perdeu 30% da vida.' : ''}${S.mode === 'infinito' ? ` Esta é a invasão ${S.wave + 1}.` : ''}</p>
+      <div class="chips">${chips}</div>
+      <div class="row"><button class="btn primary" data-a="fight" data-k="final">🛡️ Defender a ilha</button><span class="hint">Time: ${S.team.length}/3</span></div></section>`;
+  }
+  const team = teamDragons();
+  const ladder = LEAGUES.map((n, i) => `<div class="rung ${i + 1 < S.league ? 'done' : i + 1 === S.league ? 'cur' : ''}">${n}</div>`).join('');
+  const chips = [...S.dragons].sort((a, b) => powerOf(b) - powerOf(a)).map(d => `<button class="chip" aria-pressed="${S.team.includes(d.id)}" data-a="team" data-id="${d.id}">${dIcon(d.els, d.rar, 's', '', d.id)}${d.name} · Nv ${d.lvl} · ⚡${powerOf(d)}</button>`).join('');
+  const champion = S.league > LEAGUES.length;
+  const wild = S.event && S.event.type === 'selvagem' && S.event.until > S.t;
+  const nextFoes = champion ? '' : `${Math.min(3, Math.ceil((S.league + S.leagueFight) / 2))} oponente(s) de nível ${clamp(1 + (S.league - 1) * 2 + S.leagueFight, 1, MAX_DLVL)}`;
+  return `<div class="grid">
+    <section class="panel" style="grid-column:1/-1">
+      <div class="panel-head"><h2>Arena</h2><span class="muted">${champion ? 'Todas as ligas vencidas' : `Liga ${LEAGUES[S.league - 1]} · luta ${S.leagueFight + 1} de 3`}</span></div>
+      <div class="ladder">${ladder}</div>
+      ${wild ? `<div class="row"><button class="btn primary" data-a="fight" data-k="wild">🐲 Enfrentar o dragão selvagem (recompensa x3)</button><span class="hint">${Math.ceil(S.event.until - S.t)}s restantes</span></div>` : ''}
+      <div class="row">
+        ${champion
+          ? `<button class="btn primary" data-a="fight" data-k="boss">☠️ Atacar o Ancestral adormecido</button><span class="hint">${S.weakened ? 'Já ferido. Lutar de novo rende ouro e gemas.' : 'Vencer agora tira 30% da vida dele na próxima invasão.'}</span>`
+          : `<button class="btn primary" data-a="fight" data-k="arena">⚔️ Lutar</button><span class="hint">Próxima luta: ${nextFoes}</span>`}
+      </div>
+    </section>
+    <section class="panel" style="grid-column:1/-1">
+      <div class="panel-head"><h2>Seu time <span class="muted" style="font-size:.9rem">${team.length}/3</span></h2><span class="hint">Escolha até 3 dragões. Vantagem elemental vale x1,5 de dano.</span></div>
+      <div class="chips">${chips}</div>
+    </section>
+    <section class="panel" style="grid-column:1/-1">
+      <h2>Tabela de vantagens</h2>
+      <div class="elbars">${EL_KEYS.map(k => `<div class="outcome"><b style="min-width:110px">${EL[k].i} ${EL[k].n}</b><span class="muted">forte contra ${STRONG[k].map(x => EL[x].i + ' ' + EL[x].n).join(', ')}</span></div>`).join('')}</div>
+    </section>
+  </div>`;
+}
+function viewMissions() {
+  const ms = S.missions.map((m, i) => {
+    const t = missionTpl(m), p = missionProg(m), done = p >= m.target;
+    return `<div class="mission ${done ? 'done' : ''}"><span class="ic">${t.i}</span>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:0"><b>${t.t(m.target)}</b>
+        <div class="bar green"><i style="width:${pct(p, m.target)}%"></i></div>
+        <span class="hint num">${fmt(p)} / ${fmt(m.target)} · Recompensa: ${costTag(m.gold)} ${costTag(m.gems, 'm')} +${m.xp} XP</span></div>
+      <button class="btn ${done ? 'primary' : ''}" data-a="claim" data-i="${i}" ${done ? '' : 'disabled'}>Resgatar</button></div>`;
+  }).join('');
+  const ev = S.event && S.event.until > S.t ? S.event : null;
+  return `<div class="grid">
+    <section class="panel"><div class="panel-head"><h2>Missões ativas</h2><span class="muted num">${S.stats.missionsDone} concluídas</span></div>
+      <div class="missions">${ms}</div>
+      <p class="hint" style="margin:0">Novas missões ficam mais difíceis conforme o seu nível, e pagam mais.</p></section>
+    <section class="panel"><h2>Evento atual</h2>
+      ${ev ? `<div class="mission"><span class="ic">${EVENTS[ev.type].i}</span><div><b>${EVENTS[ev.type].n}</b><div class="hint">${EVENTS[ev.type].d}</div></div><span class="num muted">${Math.ceil(ev.until - S.t)}s</span></div>
+        ${ev.type === 'mercador' ? `<button class="btn primary" data-a="merchant">Trocar ${costTag(ev.price)} por 💎 10</button>` : ''}
+        ${ev.type === 'selvagem' ? `<button class="btn primary" data-a="tab" data-k="arena">Ir para a Arena</button>` : ''}`
+        : `<p class="hint" style="margin:0">Nenhum evento agora. O próximo chega em cerca de ${Math.max(1, Math.ceil(S.nextEvent - S.t))}s.</p>`}
+      <div class="outcomes">${Object.values(EVENTS).map(e => `<div class="outcome"><span style="font-size:20px">${e.i}</span><span><b>${e.n}</b><br><span class="hint">${e.d}</span></span></div>`).join('')}</div>
+    </section></div>`;
+}
+function viewShop() {
+  const dragons = EL_KEYS.map(k => {
+    const e = EL[k], locked = S.level < e.unlock, sp = speciesFromEls([k]);
+    return `<div class="item ${locked ? 'locked' : ''}">${dIcon([k], sp.rar, 'm')}<span class="t">${e.pn}</span>
+      <span class="hint"><span class="rar-${sp.rar}">${RARITY[sp.rar].n}</span> · forte contra ${STRONG[k].map(x => EL[x].i).join(' ')}</span>
+      ${locked ? `<span class="hint">🔒 Nível ${e.unlock}</span>` : `<button class="btn primary small" data-a="buy" data-k="${k}">Comprar ${costTag(e.cost)}</button>`}</div>`;
+  }).join('');
+  const hc = HATCH_COSTS[S.hatchSlots - 1];
+  return `<div class="grid">
+    <section class="panel" style="grid-column:1/-1"><h2>Dragões</h2><div class="shop">${dragons}</div></section>
+    <section class="panel" style="grid-column:1/-1"><h2>Construções e gemas</h2><div class="shop">
+      <div class="item"><span class="t">🏛️ Habitat</span><span class="hint">+3 vagas de dragão. Você tem ${S.habitats.length}.</span><button class="btn small" data-a="buyHab">Comprar ${costTag(habitatCost())}</button></div>
+      <div class="item"><span class="t">🌱 Fazenda</span><span class="hint">Mais um canteiro de comida. Você tem ${S.farms.length}.</span><button class="btn small" data-a="buyFarm">Comprar ${costTag(farmCost())}</button></div>
+      <div class="item"><span class="t">🪺 Espaço na chocadeira</span><span class="hint">Choque mais ovos ao mesmo tempo. ${S.hatchSlots}/4.</span>${hc !== undefined ? `<button class="btn small" data-a="buyHatch">Comprar ${costTag(hc)}</button>` : '<span class="hint">Máximo atingido</span>'}</div>
+      <div class="item"><span class="t">💰 Saco de ouro</span><span class="hint">Troque 5 gemas por ${fmt(150 * S.level + Math.round(totalGps() * 30))} de ouro.</span><button class="btn gemb small" data-a="gemGold">Trocar 💎 5</button></div>
+      <div class="item"><span class="t">🔮 Ovo misterioso</span><span class="hint">Garante um Épico, com chance de Lendário.</span><button class="btn gemb small" data-a="mystery">Comprar 💎 20</button></div>
+    </div></section></div>`;
+}
+function viewAch() {
+  const total = ACH.length, got = Object.keys(S.ach).length;
+  const cats = [...new Set(ACH.map(a => a.cat))];
+  return `<section class="panel">
+    <div class="panel-head"><h2>Conquistas</h2><span class="muted num">${got}/${total}</span></div>
+    <div class="bar gold"><i style="width:${pct(got, total)}%"></i></div>
+    ${cats.map(c => `<span class="cat">${c}</span><div class="achs">${ACH.filter(a => a.cat === c).map(a => {
+      const t = S.ach[a.id];
+      return `<div class="ach ${t === undefined ? 'locked' : ''}"><span class="ic">${a.i}</span><div><b>${a.n}</b><small>${a.d}</small><small>${t === undefined ? `Recompensa: 💎 ${a.g}` : `Desbloqueada em ${fmtTime(t)}`}</small></div></div>`;
+    }).join('')}</div>`).join('')}
+  </section>`;
+}
+function statRows() {
+  const st = S.stats, mins = Math.max(S.t / 60, 1 / 60);
+  const winRate = pct(st.battlesWon, st.battlesWon + st.battlesLost);
+  return [
+    ['Geral', [
+      ['Tempo de jogo', fmtTime(S.t)], ['Modo', MODES[S.mode].n], ['Nível do jogador', S.level], ['XP total', fmt(st.xpTotal)],
+      ['Cliques', fmt(st.clicks)], ['Cliques por minuto', (st.clicks / mins).toFixed(1).replace('.', ',')], ['Pontuação atual', fmt(score().total)],
+    ]],
+    ['Economia', [
+      ['Ouro ganho', fmt(st.goldEarned)], ['Ouro gasto', fmt(st.goldSpent)], ['Ouro por minuto (média)', fmt(st.goldEarned / mins)],
+      ['Ouro por segundo agora', fmt(totalGps())], ['Pico de ouro por segundo', fmt(st.peakGps)], ['Coletas', fmt(st.collects)],
+      ['Maior coleta', fmt(st.bestCollect)], ['Gemas ganhas', fmt(st.gemsEarned)], ['Gemas gastas', fmt(st.gemsSpent)],
+    ]],
+    ['Fazenda', [
+      ['Plantios', fmt(st.cropsPlanted)], ['Colheitas', fmt(st.cropsHarvested)], ['Comida colhida', fmt(st.foodHarvested)],
+      ['Comida gasta', fmt(st.foodSpent)], ['Fazendas', S.farms.length],
+    ]],
+    ['Dragões', [
+      ['Dragões na ilha', S.dragons.length], ['Comprados', st.dragonsBought], ['Vendidos', st.dragonsSold],
+      ['Espécies descobertas', `${Object.keys(S.dex).length}/${ALL_SPECIES.length}`], ['Maior nível', st.maxDragonLvl], ['Alimentações', st.feeds],
+      ['Obtidos: Comum / Raro', `${st.byRarity.C} / ${st.byRarity.R}`], ['Obtidos: Épico / Lendário', `${st.byRarity.E} / ${st.byRarity.L}`],
+      ['Poder total do time', fmt(S.dragons.reduce((a, d) => a + powerOf(d), 0))],
+    ]],
+    ['Cruzamento', [
+      ['Cruzamentos', st.breeds], ['Ovos chocados', st.eggsHatched], ['Ovos acelerados', st.eggsSpedUp],
+      ['Primeiro Lendário', st.firstLegendT === null ? '—' : fmtTime(st.firstLegendT)], ['Ovos perdidos pegos', st.lostEggs],
+    ]],
+    ['Arena', [
+      ['Liga atual', LEAGUES[Math.min(S.league, 8) - 1] + (S.league > 8 ? ' (concluída)' : '')], ['Batalhas', st.battles], ['Vitórias', st.battlesWon], ['Derrotas', st.battlesLost],
+      ['Taxa de vitória', winRate + '%'], ['Sequência atual', st.streak], ['Melhor sequência', st.bestStreak],
+      ['Dano causado', fmt(st.damageDealt)], ['Dano recebido', fmt(st.damageTaken)], ['Maior golpe', fmt(st.bestHit)],
+      ['Golpes críticos', st.crits], ['Golpes super eficazes', st.superEffective], ['Nocautes', st.kos], ['Dragões nocauteados', st.kosTaken],
+      ['Vitórias perfeitas', st.flawless], ['Selvagens derrotados', st.wildWins], ['Ancestral adormecido', st.bossDefeated ? `vencido ${st.bossDefeated}x` : 'não enfrentado'],
+      ['Invasões repelidas', st.finalWins],
+      ['Invasão Final', S.finalResult ? (S.finalResult.win ? 'vencida' : `derrota (${Math.round(S.finalResult.dmgPct * 100)}% de dano)`) : 'ainda não acabou'],
+    ]],
+    ['Progresso', [
+      ['Missões concluídas', st.missionsDone], ['Eventos presenciados', st.eventsSeen], ['Conquistas', `${Object.keys(S.ach).length}/${ACH.length}`],
+    ]],
+  ];
+}
+function viewStats() {
+  const st = S.stats;
+  const counts = {}; EL_KEYS.forEach(k => counts[k] = 0);
+  S.dragons.forEach(d => d.els.forEach(e => counts[e]++));
+  const max = Math.max(1, ...Object.values(counts));
+  const kpis = [
+    ['🪙', fmt(st.goldEarned), 'ouro ganho'], ['🐉', S.dragons.length, 'dragões'], ['📗', `${Object.keys(S.dex).length}/${ALL_SPECIES.length}`, 'espécies'],
+    ['⚔️', `${st.battlesWon}/${st.battles}`, 'vitórias'], ['🏆', `${Object.keys(S.ach).length}/${ACH.length}`, 'conquistas'], ['⭐', fmt(score().total), 'pontos'],
+  ];
+  return `<div class="grid">
+    <section class="panel" style="grid-column:1/-1"><div class="kpis">${kpis.map(k => `<div class="kpi"><span>${k[0]} ${k[2]}</span><b class="num">${k[1]}</b></div>`).join('')}</div></section>
+    <section class="panel" style="grid-column:1/-1"><div class="panel-head"><h2>Ouro ao longo da partida</h2><span class="hint">Linha laranja: ouro ganho acumulado · tracejado azul: ouro por segundo</span></div>
+      <canvas class="chart" id="chart" aria-label="Gráfico de ouro ao longo do tempo"></canvas></section>
+    <section class="panel"><h2>Dragões por elemento</h2><div class="elbars">${EL_KEYS.map(k => `<div class="elbar"><span>${EL[k].i} ${EL[k].n}</span><div class="bar"><i style="width:${pct(counts[k], max)}%;background:${EL[k].c}"></i></div><span class="num">${counts[k]}</span></div>`).join('')}</div></section>
+    ${statRows().map(([g, rows]) => `<section class="panel"><h2>${g}</h2><table class="stats">${rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table></section>`).join('')}
+  </div>`;
+}
+function drawChart() {
+  const cv = document.getElementById('chart');
+  if (!cv) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  const pts = S.history.concat([{ t: S.t, earned: S.stats.goldEarned, gps: totalGps() }]);
+  const pad = { l: 52, r: 52, t: 12, b: 26 };
+  const W = w - pad.l - pad.r, H = h - pad.t - pad.b;
+  const tMax = Math.max(60, S.t), eMax = Math.max(100, ...pts.map(p => p.earned)), gMax = Math.max(5, ...pts.map(p => p.gps));
+  const css = getComputedStyle(document.documentElement);
+  const line = css.getPropertyValue('--line').trim(), muted = css.getPropertyValue('--muted').trim();
+  g.font = '11px Nunito, sans-serif'; g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + H - (H * i / 4);
+    g.beginPath(); g.moveTo(pad.l, y); g.lineTo(pad.l + W, y); g.stroke();
+    g.textAlign = 'right'; g.fillText(fmt(eMax * i / 4), pad.l - 6, y + 4);
+    g.textAlign = 'left'; g.fillText(fmt(gMax * i / 4) + '/s', pad.l + W + 6, y + 4);
+  }
+  g.textAlign = 'center';
+  for (let i = 0; i <= 4; i++) g.fillText(fmtTime(tMax * i / 4), pad.l + W * i / 4, h - 6);
+  const X = t => pad.l + W * t / tMax;
+  g.beginPath(); pts.forEach((p, i) => { const x = X(p.t), y = pad.t + H - H * p.earned / eMax; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.lineTo(X(pts[pts.length - 1].t), pad.t + H); g.lineTo(X(0), pad.t + H); g.closePath();
+  g.fillStyle = 'rgba(255,122,61,.15)'; g.fill();
+  g.beginPath(); pts.forEach((p, i) => { const x = X(p.t), y = pad.t + H - H * p.earned / eMax; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.strokeStyle = '#ff7a3d'; g.lineWidth = 2.5; g.stroke();
+  g.beginPath(); pts.forEach((p, i) => { const x = X(p.t), y = pad.t + H - H * p.gps / gMax; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.strokeStyle = '#62e3ff'; g.setLineDash([5, 4]); g.lineWidth = 2; g.stroke(); g.setLineDash([]);
+  const lp = pts[pts.length - 1];
+  g.fillStyle = '#ff7a3d'; g.beginPath(); g.arc(X(lp.t), pad.t + H - H * lp.earned / eMax, 4, 0, Math.PI * 2); g.fill();
+}
+let chartTimer = 0;
+setInterval(() => { if (S && S.tab === 'stats' && !S.ended) drawChart(); }, 5000);
+
+function renderLostEgg() {
+  const box = $('#lostEgg');
+  const want = S && S.lostEgg && !S.paused && !S.ended ? `<button class="lost-egg" data-a="egg" style="left:${S.lostEgg.x}vw;top:${S.lostEgg.y}vh" aria-label="Pegar o ovo perdido">🥚</button>` : '';
+  if (box.innerHTML !== want) box.innerHTML = want;
+}
+function renderStart() {
+  overlay(`<div class="card">
+    <div class="hero">
+      <div class="row" style="justify-content:center">${dIcon(['fogo'], 'R', 'l', '', 1)}${dIcon(['luz', 'trevas'], 'L', 'xl', '', 4)}${dIcon(['agua', 'planta'], 'E', 'l', 'flip', 2)}</div>
+      <h1>Dragões Relâmpago</h1>
+      <p>O Dragão Ancestral dorme sob a ilha e vai despertar quando o relógio zerar. Até lá, crie, cruze, alimente e treine um exército de dragões. Quando ele acordar, a batalha final decide o seu placar. Ao fechar a aba, a partida se perde.</p>
+    </div>
+    <div class="modes">${Object.entries(MODES).map(([k, m]) => `<button class="mode" data-a="start" data-k="${k}"><b>${m.n}</b><span class="muted">${m.d}</span></button>`).join('')}</div>
+    <p class="hint" style="margin:0;text-align:center">Dica: colete ouro dos habitats, plante comida, alimente dragões até o nível 3 e cruze para descobrir as ${ALL_SPECIES.length} espécies.</p>
+  </div>`);
+}
+function renderEnd() {
+  const sc = score();
+  const r = rankFor(sc.total);
+  const got = ACH.filter(a => S.ach[a.id] !== undefined);
+  overlay(`<div class="card">
+    <div class="hero"><span class="muted" style="font-weight:800">FIM DA PARTIDA · ${MODES[S.mode].n.toUpperCase()} · ${fmtTime(S.t)}</span>
+      <div class="rank">${r}</div><h1 class="num">${fmt(sc.total)} pontos</h1>
+      <p>${S.mode === 'infinito' ? `Você repeliu ${S.stats.finalWins} invasão(ões) do Ancestral em ${fmtTime(S.t)}.${S.finalResult && !S.finalResult.win ? ` Na última, ele levou ${Math.round(S.finalResult.dmgPct * 100)}% de dano.` : ''}` : !S.finalResult ? 'Você deixou a ilha antes do despertar. O Ancestral encontrou os habitats vazios.' : S.finalResult.win ? '🛡️ A ilha resistiu! O Dragão Ancestral voltou a dormir, e seus dragões viraram lenda.' : `☠️ O Ancestral tomou a ilha, mas levou ${Math.round(S.finalResult.dmgPct * 100)}% de dano. Na próxima, ele cai.`}</p></div>
+    <table class="stats">${Object.entries(sc.parts).map(([k, v]) => `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`).join('')}</table>
+    <div class="kpis">
+      <div class="kpi"><span>🪙 ouro ganho</span><b class="num">${fmt(S.stats.goldEarned)}</b></div>
+      <div class="kpi"><span>🐉 dragões</span><b class="num">${S.dragons.length}</b></div>
+      <div class="kpi"><span>📗 espécies</span><b class="num">${Object.keys(S.dex).length}/${ALL_SPECIES.length}</b></div>
+      <div class="kpi"><span>⚔️ vitórias</span><b class="num">${S.stats.battlesWon}</b></div>
+      <div class="kpi"><span>🏅 liga</span><b>${LEAGUES[Math.min(S.league, 8) - 1]}</b></div>
+      <div class="kpi"><span>☠️ dano no Ancestral</span><b class="num">${S.finalResult ? Math.round(S.finalResult.dmgPct * 100) : 0}%</b></div>
+      <div class="kpi"><span>🏆 conquistas</span><b class="num">${got.length}/${ACH.length}</b></div>
+    </div>
+    <span class="cat">Conquistas desta partida</span>
+    <div class="achs">${got.length ? got.map(a => `<div class="ach"><span class="ic">${a.i}</span><div><b>${a.n}</b><small>${fmtTime(S.ach[a.id])}</small></div></div>`).join('') : '<span class="hint">Nenhuma desta vez.</span>'}</div>
+    <details><summary style="cursor:pointer;font-weight:800">Todas as estatísticas</summary>
+      ${statRows().map(([g, rows]) => `<h3 style="margin-top:12px">${g}</h3><table class="stats">${rows.map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</table>`).join('')}
+    </details>
+    <div class="row" style="justify-content:center"><button class="btn primary" data-a="again">Jogar de novo</button></div>
+  </div>`);
+}
+
+// ============================================================
+// ENTRADA (pointerdown para não perder cliques durante a re-renderização)
+// ============================================================
+const ACTIONS = {
+  tab: el => { S.tab = el.dataset.k; },
+  collect: (el, ev) => collect(+el.dataset.i, ev),
+  collectAll: (el, ev) => collectAll(ev),
+  farm: (el, ev) => harvest(+el.dataset.i, ev),
+  selCrop: el => { if (unlockedCrop(el.dataset.k)) S.selCrop = el.dataset.k; },
+  harvestAll: () => harvestAll(),
+  buyHab: () => buyHabitat(), buyFarm: () => buyFarm(), buyHatch: () => buyHatch(),
+  buy: el => buyDragon(el.dataset.k),
+  feed: el => feed(+el.dataset.id), sell: el => sell(+el.dataset.id),
+  hatch: el => hatch(+el.dataset.id), speed: el => speedEgg(+el.dataset.id),
+  pickParent: el => {
+    const id = +el.dataset.id;
+    if (S.breedA === id) S.breedA = null; else if (S.breedB === id) S.breedB = null;
+    else if (!S.breedA) S.breedA = id; else S.breedB = id;
+  },
+  clearParent: el => { if (el.dataset.k === 'A') S.breedA = null; else S.breedB = null; },
+  breed: () => breed(),
+  team: el => toggleTeam(+el.dataset.id),
+  fight: el => startBattle(el.dataset.k),
+  move: el => playerMove(el.dataset.k),
+  auto: () => { S.autoBattle = !S.autoBattle; },
+  surrender: () => surrender(), closeBattle: () => closeBattle(),
+  claim: el => claimMission(+el.dataset.i),
+  merchant: () => buyMerchant(), gemGold: () => gemsToGold(), mystery: () => mysteryEgg(),
+  egg: () => catchEgg(),
+  pause: () => togglePause(),
+  askEnd: () => overlay(`<div class="card hero"><h1>Encerrar a partida?</h1><p>${S && S.finalPhase ? 'Desistir agora conta como ilha não defendida.' : 'Você sai antes do Ancestral despertar, e a ilha fica sem defesa.'} Não dá para voltar.</p><div class="row"><button class="btn primary" data-a="end">Encerrar agora</button><button class="btn" data-a="cancelEnd">Continuar jogando</button></div></div>`),
+  cancelEnd: () => overlay(''),
+  end: () => endGame(),
+  start: el => startGame(el.dataset.k),
+  again: () => { S = null; $('#toasts').innerHTML = ''; renderStart(); ['#top', '#tabs', '#sheet', '#map', '#hud'].forEach(q => $(q).innerHTML = ''); lastTop = lastTabs = lastView = lastMap = lastHud = ''; mapCentered = false; },
+};
+function handle(ev) {
+  const el = ev.target.closest('[data-a]');
+  if (!el || el.disabled) return;
+  const fn = ACTIONS[el.dataset.a];
+  if (!fn) return;
+  if (S && !S.ended) S.stats.clicks++;
+  const a = el.dataset.a;
+  if (a === 'tab') sfx('aba');
+  else if (['pause', 'askEnd', 'cancelEnd', 'pickParent', 'clearParent', 'team', 'selCrop', 'auto', 'start', 'again', 'surrender', 'end', 'move', 'fight'].includes(a)) { if (a !== 'pause' && a !== 'move' && a !== 'fight') sfx('clique'); }
+  fn(el, ev);
+  if (S && !S.ended) { checkAchievements(); render(); }
+  runFx();
+}
+// Mouse age no pointerdown; toque age no pointerup, só se o dedo não arrastou (para não disparar ao rolar a tela)
+let downAt = null;
+document.addEventListener('pointerdown', ev => {
+  if (ev.pointerType === 'mouse') { if (ev.button === 0) handle(ev); }
+  else downAt = { x: ev.clientX, y: ev.clientY };
+});
+document.addEventListener('pointerup', ev => {
+  if (ev.pointerType === 'mouse' || !downAt) return;
+  const moved = Math.hypot(ev.clientX - downAt.x, ev.clientY - downAt.y);
+  downAt = null;
+  if (moved < 12) {
+    const target = document.elementFromPoint(ev.clientX, ev.clientY);
+    if (target) handle({ target, clientX: ev.clientX, clientY: ev.clientY });
+  }
+});
+document.addEventListener('click', ev => { if (ev.detail === 0) handle(ev); }); // teclado (Enter/Espaço)
+document.addEventListener('keydown', ev => {
+  if (!S || S.ended || ev.target.matches('input, textarea')) return;
+  const n = parseInt(ev.key, 10);
+  if (n >= 1 && n <= TABS.length) { S.tab = TABS[n - 1][0]; sfx('aba'); render(); }
+  if (ev.key === 'p' || ev.key === 'P') togglePause();
+  if (ev.key === 'Escape' && S.tab !== 'ilha') { S.tab = 'ilha'; render(); }
+  if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('g[data-a]')) handle({ target: ev.target, clientX: 0, clientY: 0 });
+  if ((ev.key === 'c' || ev.key === 'C') && S.level >= 5) { collectAll(); render(); }
+});
+
+// Atualizações ao vivo do artefato: preserva a partida em andamento
+window.claude?.hot?.snapshot?.(() => ({ S: S ? JSON.parse(JSON.stringify(S)) : null }));
+function boot(data) {
+  try { Som.criarControles($('#somctl'), { compacto: true }); Som.ligarTeclaM(); } catch (e) { /* áudio é opcional */ }
+  if (data && data.S && MODES[data.S.mode] && data.S.warned) { S = data.S; last = performance.now(); if (S.ended) { renderEnd(); music('placar'); } else { render(true); music(S.finalPhase ? 'invasao' : S.battle && !S.battle.over ? 'batalha' : 'ilha'); } }
+  else renderStart();
+  setInterval(tick, 250);
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(boot) : boot(window.claude?.hot?.data ?? {});
+// Gancho para testes automatizados
+window.__game = { get S() { return S; }, startGame, tick, ACTIONS, endGame, ALL_SPECIES };
+</script>
