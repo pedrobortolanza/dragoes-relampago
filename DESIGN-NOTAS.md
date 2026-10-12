@@ -161,6 +161,16 @@ Clique/toque em tudo. Teclas: `1`–`9` abrem os painéis do dock (1 = Ilha), `E
 - **Barra inferior (dock):** Ilha, Dragões, Cruzar, Chocadeira, Arena, Missões, Loja, Conquistas, Estatísticas, com selos de contagem na Chocadeira e nas Missões. Cada item, ou um clique na construção, abre um **painel** sobre a ilha. No celular, o painel sobe de baixo. Fecha com ✕, com clique fora ou com Esc.
 - **Celular:** o mapa mantém 920px de largura e rola de lado dentro da própria área, começando centralizado.
 
+### Visual da interface (estilo jogo, v5)
+- **Botões grossos** com borda escura, brilho em cima e um "degrau" embaixo que afunda ao clicar. Cores por função: laranja (ação principal), verde (Chocar, Cruzar), azul (gemas), vermelho (Desistir, Encerrar, Fechar), roxo-pedra (o resto). Texto na fonte Lilita One.
+- **Barra superior** com cápsulas de recurso (ícone numa moeda redonda), estrela de nível, relógio vermelho do Ancestral. **Doca** com botões redondos em relevo; o menu aberto sobe e fica laranja; selos vermelhos com contorno branco.
+- **Janelas de menu** com moldura dourada e faixa de título na cor do menu (Dragões roxo, Cruzar rosa, Chocadeira madeira, Arena vermelho, Missões marrom, Loja verde, Conquistas dourado, Estatísticas azul) e botão ✕ redondo.
+- **Fundo único por menu** (cenários em SVG embutido): Dragões = santuário nas montanhas ao entardecer; Cruzar = jardim rosa com corações; Chocadeira = celeiro de madeira com lâmpadas e palha; Missões = quadro de cortiça; Loja = toldo listrado e balcão; Conquistas = salão de troféus; Estatísticas = planta azul quadriculada. Tela inicial e placar usam o santuário.
+- **Arena com um cenário por liga:** Bronze deserto, Prata neve, Ouro campo dourado, Platina verde-água, Diamante cristais, Mestre noite roxa, Grão-Mestre vulcão, Campeões aurora; a Invasão Final e o Ancestral adormecido têm um céu de tempestade com raios. Todos com arquibancada, torcida e bandeiras.
+- **Arena (fora da luta):** faixa com a liga atual, o time em pódios (vagas vazias aparecem) e um botão grande "Lutar!". Escada de ligas em escudos com a cor de cada liga.
+- **Batalha:** placas com nome e barra de vida com o número dentro, dragões em pódios, selo "VS" no meio, controles e registro em caixas escuras sobre o cenário.
+- **Chocadeira:** cada ovo é um desenho com as cores dos elementos da espécie, deitado num ninho de palha dentro de um caixote de madeira; brilha e balança quando está pronto. Mostra os segundos restantes. Vagas livres aparecem como ninhos vazios.
+
 ## Visual dos dragões
 - **Modelos prontos (v4, atual):** a pedido do Pedro, dragões e construções principais usam modelos 3D feitos por artistas, todos CC0 (domínio público), embutidos no `index.html` como GLB em base64 (entre `GLB-START`/`GLB-END`) e carregados com o GLTFLoader do three.js r147.
   - **Dragão:** "Dragon Evolved" do pacote Ultimate Monsters, de Quaternius (quaternius.com). Um único modelo, recolorido por elemento (corpo na cor do 1º elemento, barriga e membrana das asas na cor do 2º), com a animação de voo "Flying_Idle" em 8 quadros. Raridade muda o tamanho (Comum 0,9× até Lendário 1,14×), Lendário ganha chifres e coroa dourados, Luz ganha auréola, e partículas do elemento giram em volta (chamas, gotas, folhas, pedras, raios, cristais de gelo, anéis de metal, cristais de trevas, brilhos).
