@@ -127,7 +127,10 @@ Se o defensor é forte contra o elemento do golpe, o dano é x0,7. Com dois elem
 | 🧳 Mercador Viajante | 10 gemas por `400 · nível` de ouro | 30s |
 
 ## Loja
-Dragões puros por elemento, habitat, fazenda, espaço de chocadeira, Saco de ouro (5 gemas → `150·nível + 30s de produção`), Ovo misterioso (20 gemas → Épico garantido, chance de Lendário).
+"Mercado da Ilha", com três abas:
+- **Dragões:** os 9 dragões puros, em vitrines com pódio, faixa de raridade, ouro/s, vida e ataque de nível 1, "forte contra" e selo NOVO! para espécie ainda não descoberta. Bloqueados aparecem escuros com cadeado e o nível. **Oferta do momento:** um dragão desbloqueado custa 25% menos; troca a cada 90 s de jogo (`floor(t/90)` pela lista de elementos liberados).
+- **Construções:** habitat, fazenda e ninho na chocadeira, com quantos você tem.
+- **Tesouros:** Mercador Viajante (quando o evento está ativo, com selo "!" na aba), Ovo misterioso (20 gemas → Épico garantido, chance de Lendário), **Nuvem de Ouro** (12 gemas → ouro dos habitats em dobro por 45 s, o mesmo efeito do evento Chuva de Ouro, e soma tempo se já estiver ativo), **Adubo Mágico** (8 gemas → fazendas 3x mais rápidas por 45 s, o mesmo efeito da Colheita Farta) e Saco de ouro (5 gemas → `150·nível + 30s de produção`).
 
 ## Conquistas (65, em 9 categorias)
 Cada uma dá gemas ao desbloquear (1 a 20). Lista completa com condições está no array `ACH` em `index.html`. Categorias: Primeiros passos (7), Riqueza (9), Coleção (11), Evolução (6), Fazenda (4), Arena (12), Ilha (7), Jogador (6), Invasão (3). Destaques: *Guardião da ilha* (vencer a Invasão Final), *Ilha intocável* (vencer sem perder dragões), *Cicatriz no Ancestral* (tirar 50% da vida dele), *Golpe no sono* (vencer o Ancestral adormecido), *Enciclopédia viva* (40 espécies), *Relâmpago* (nível 5 em 5 min), *Sorte de principiante* (Lendário em 10 min), *Arco-íris elemental* (9 elementos ao mesmo tempo).
@@ -161,6 +164,13 @@ Clique/toque em tudo. Teclas: `1`–`9` abrem os painéis do dock (1 = Ilha), `E
 - **Barra inferior (dock):** Ilha, Dragões, Cruzar, Chocadeira, Arena, Missões, Loja, Conquistas, Estatísticas, com selos de contagem na Chocadeira e nas Missões. Cada item, ou um clique na construção, abre um **painel** sobre a ilha. No celular, o painel sobe de baixo. Fecha com ✕, com clique fora ou com Esc.
 - **Celular:** o mapa mantém 920px de largura e rola de lado dentro da própria área, começando centralizado.
 
+### Ícones (v6)
+- Nenhum emoji aparece na interface: todos viraram ícones de jogo em SVG (game-icons.net, CC BY 3.0, recoloridos com degradê e contorno escuro), num sprite embutido no `index.html`. A função `iconize()` troca os emojis de todo HTML gerado (inclusive os textos do mapa) e um observador cobre o que entra por outros caminhos (controles de som, números flutuantes). Créditos dos autores em `CREDITOS.md`.
+
+### Chão da ilha (v6)
+- Grama em ladrilhos com variação de tom, manchas claras e escuras, tufos de grama, florzinhas de várias cores, pedrinhas e trevos; caminhos de pedra com meio-fio; borda de grama caindo sobre o penhasco. Tudo vira uma única imagem gerada uma vez (o mapa continua leve).
+- **Lavoura:** faixa de terra arada com sulcos e cerca de madeira na beira da ilha, onde ficam as fazendas. Cada fazenda é um canteiro elevado com 4 plantas desenhadas por cultura (trigo, milho, abóbora, fruta-dragão), que crescem com o progresso e mudam de cor quando maduras.
+
 ### Visual da interface (estilo jogo, v5)
 - **Botões grossos** com borda escura, brilho em cima e um "degrau" embaixo que afunda ao clicar. Cores por função: laranja (ação principal), verde (Chocar, Cruzar), azul (gemas), vermelho (Desistir, Encerrar, Fechar), roxo-pedra (o resto). Texto na fonte Lilita One.
 - **Barra superior** com cápsulas de recurso (ícone numa moeda redonda), estrela de nível, relógio vermelho do Ancestral. **Doca** com botões redondos em relevo; o menu aberto sobe e fica laranja; selos vermelhos com contorno branco.
@@ -172,7 +182,14 @@ Clique/toque em tudo. Teclas: `1`–`9` abrem os painéis do dock (1 = Ilha), `E
 - **Chocadeira:** cada ovo é um desenho com as cores dos elementos da espécie, deitado num ninho de palha dentro de um caixote de madeira; brilha e balança quando está pronto. Mostra os segundos restantes. Vagas livres aparecem como ninhos vazios.
 
 ## Visual dos dragões
-- **Modelos prontos (v4, atual):** a pedido do Pedro, dragões e construções principais usam modelos 3D feitos por artistas, todos CC0 (domínio público), embutidos no `index.html` como GLB em base64 (entre `GLB-START`/`GLB-END`) e carregados com o GLTFLoader do three.js r147.
+- **Formatos próprios (v5, atual):** o Pedro não gostou do dragão pronto da v4 e pediu pelo menos 3 modelos diferentes. Nenhum dragão pronto, gratuito e no estilo fofo estava disponível, então os dragões viraram modelos 3D próprios em quatro formatos de corpo, um por raridade:
+  - **Comum, Filhote:** quadrúpede gordinho, cabeça enorme, pernas curtas e asinhas.
+  - **Raro, Serpe:** bípede em pé, esguio, pescoço comprido, bracinhos, placas na barriga e asas grandes abertas.
+  - **Épico, Serpente:** dragão oriental flutuando em S, corpo em gomos que ondula, crina, bigodes, presas, chifres longos, quatro perninhas e barbatanas.
+  - **Lendário, Titã:** bípede robusto, ombreiras e espinhos dourados, chifres de carneiro, presas, asas enormes e coroa.
+  - Todos têm olhos grandes com brilho e íris na cor do elemento, contorno escuro de desenho animado, corpo na cor do 1º elemento e asas/barriga na cor do 2º, ponta da cauda e enfeites nas costas conforme o elemento (chama, raio, folha, barbatana, cristal de trevas, pedras, cristais de gelo, rebites de metal) e auréola para Luz. Animação em 8 quadros (asas, cauda, cabeça; a Serpente ondula o corpo inteiro).
+  - **Abertura sem modelos antigos:** uma tela de carregamento ("Despertando os dragões…") espera os modelos da ilha e os dragões da tela inicial. Durante o jogo, um dragão cujo modelo ainda não ficou pronto aparece só como um brilho pulsando no lugar, nunca no desenho antigo. Dragões que estão na tela passam na frente da fila de preparo.
+- **Modelos prontos (v4, substituída nos dragões):** a pedido do Pedro, dragões e construções principais usam modelos 3D feitos por artistas, todos CC0 (domínio público), embutidos no `index.html` como GLB em base64 (entre `GLB-START`/`GLB-END`) e carregados com o GLTFLoader do three.js r147.
   - **Dragão:** "Dragon Evolved" do pacote Ultimate Monsters, de Quaternius (quaternius.com). Um único modelo, recolorido por elemento (corpo na cor do 1º elemento, barriga e membrana das asas na cor do 2º), com a animação de voo "Flying_Idle" em 8 quadros. Raridade muda o tamanho (Comum 0,9× até Lendário 1,14×), Lendário ganha chifres e coroa dourados, Luz ganha auréola, e partículas do elemento giram em volta (chamas, gotas, folhas, pedras, raios, cristais de gelo, anéis de metal, cristais de trevas, brilhos).
   - **Construções:** KayKit Medieval Hexagon Pack, de Kay Lousberg (kaylousberg.com): Arena = castelo, Mercado = barraca de mercado, Mural de Missões = taverna, Montanha do Amor = montanha com árvores (mais o coração), além de pinheiros, pedras, vitórias-régias, barris, caixotes, sacos, bandeiras, um moinho perto das fazendas e um poço no cruzamento central dos caminhos. Chocadeira, fazendas e as bases dos habitats continuam com os modelos procedurais da v3.
   - Se os GLBs não carregarem, o jogo cai para os modelos procedurais da v3; sem WebGL, para o SVG.
@@ -194,6 +211,11 @@ Clique/toque em tudo. Teclas: `1`–`9` abrem os painéis do dock (1 = Ilha), `E
 - Dragonário: espécies não descobertas aparecem como silhueta.
 - **Ilha (v2):** mar em gradiente com espuma animada na borda, areia e penhascos com camadas de rocha, grama com textura, caminhos de pedra, árvores frutíferas e pinheiros, flores, pedras e arbustos. Cada habitat ganha o tema do elemento da maioria dos seus dragões: lago de lava (Fogo), lagoa (Água), arbustos e flores (Planta), rochas (Terra), bobina elétrica (Elétrico), cristais de gelo (Gelo), engrenagem (Metal), cristais roxos (Trevas) e pilares dourados (Luz). Construções com sombras e gradientes (Arena de pedra, Montanha do Amor, cúpula da Chocadeira, Mercado com toldo, Mural de Missões com telhado).
 - **Correção:** os dragões dentro do mapa são `<svg>` aninhados e recebem `width`/`height` também como atributos, além do CSS. Sem isso, alguns navegadores mostravam um dragão gigante flutuando no canto.
+
+## Lore e cutscenes
+- História completa em `lore/HISTORIA.md` (Ilha Relâmpago, o Selo dos Nove, Mestra Iara e Vorágon, o Dragão Ancestral). O módulo `lore/cutscene.js` está copiado no `index.html` entre `CUTSCENE-START`/`CUTSCENE-END`.
+- Cenas: **abertura** (ao começar a partida), **despertar** (quando o Ancestral acorda; no Infinito, `despertarOnda` a partir da 2ª invasão), **ondaVencida** (ao fechar uma invasão vencida no Infinito), **sonho** (na primeira vez que se ataca o Ancestral adormecido; o botão da Arena agora diz "Entrar no sonho do Ancestral") e os finais **vitoria**, **derrota** e **semDefesa** (antes do placar).
+- O relógio fica parado durante as cenas. Clique, Espaço, Enter ou → avançam; Esc ou "Pular" encerram.
 
 ## Sons e música
 - Tudo é sintetizado com a Web Audio API (`audio/audio.js`, objeto global `Som`), sem arquivos de áudio. O conteúdo de `audio.js` está **embutido** no `index.html`, entre os comentários `AUDIO-START` e `AUDIO-END`. Para atualizar o áudio, substitua esse trecho pela versão nova do arquivo.

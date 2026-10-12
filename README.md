@@ -19,5 +19,6 @@ Jogo de navegador no estilo Dragon City, feito para caber numa sessão: crie, cr
 5. Quando o tempo acabar, defenda a ilha do Dragão Ancestral na Invasão Final.
 
 ## Créditos
-- Modelos 3D CC0: dragão de [Quaternius](https://quaternius.com) (Ultimate Monsters) e construções do KayKit Medieval Hexagon Pack de [Kay Lousberg](https://kaylousberg.com).
+- Modelos 3D CC0: construções do KayKit Medieval Hexagon Pack de [Kay Lousberg](https://kaylousberg.com). Os dragões são modelos próprios do jogo.
+- Ícones: [game-icons.net](https://game-icons.net) (CC BY 3.0), autores listados em `CREDITOS.md`.
 - [three.js](https://threejs.org) (MIT).

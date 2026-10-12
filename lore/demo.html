@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cutscenes da Lore</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;700;800&display=swap">
+<style>
+  :root { --ink: #1b1230; }
+  body { margin: 0; min-height: 100vh; font-family: Nunito, system-ui, sans-serif; color: #fff;
+    background: radial-gradient(ellipse at top, #4a3690, #1a1330 70%); padding: 24px 16px; box-sizing: border-box; }
+  h1 { font-family: "Lilita One", sans-serif; font-weight: 400; color: #ffd25c; font-size: 2.2rem; margin: 0 0 4px;
+    text-shadow: 0 3px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink); }
+  p { max-width: 720px; line-height: 1.5; color: #e3dcff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; max-width: 980px; margin-top: 18px; }
+  button { font-family: "Lilita One", sans-serif; font-size: 1.05rem; color: #fff; cursor: pointer; text-align: left;
+    padding: 12px 14px; border: 2px solid var(--ink); border-radius: 14px; text-shadow: 0 2px 0 rgba(0,0,0,.45);
+    background: linear-gradient(180deg, #8573c9 0%, #6b5aa8 45%, #43357c 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35), inset 0 -3px 0 rgba(0,0,0,.22), 0 4px 0 var(--ink), 0 7px 10px rgba(0,0,0,.35); }
+  button small { display: block; font-family: Nunito, sans-serif; font-weight: 700; font-size: .82rem; color: #e3dcff; margin-top: 4px; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+  button.primary { background: linear-gradient(180deg, #ffdf6b 0%, #ffa531 50%, #f0670f 100%); text-shadow: 0 2px 0 #8f3a05; }
+  label { font-weight: 800; margin-right: 8px; }
+  select { font: inherit; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--ink); background: #2f2656; color: #fff; }
+  #log { margin-top: 18px; color: #9cf58f; font-weight: 700; min-height: 1.5em; }
+</style>
+</head>
+<body>
+<h1>Dragões Relâmpago: cutscenes</h1>
+<p>Clique numa cena para assistir. Clique, Espaço ou Enter avançam a fala; Esc ou o botão Pular encerram. O som só toca se o módulo de áudio do jogo estiver carregado (aqui ele é carregado de <code>../audio/audio.js</code>).</p>
+<div><label for="modo">Modo da partida</label>
+<select id="modo"><option value="rapido">Rápida (10 min)</option><option value="padrao" selected>Padrão (20 min)</option><option value="longa">Longa (30 min)</option><option value="infinito">Infinito</option></select></div>
+<div class="grid" id="grid"></div>
+<div id="log"></div>
+<script src="../audio/audio.js"></script>
+<script src="cutscene.js"></script>
+<script>
+  const INFO = {
+    abertura: 'Começo da partida', sonho: 'Entrar no Ancestral adormecido', despertar: 'Invasão Final',
+    despertarOnda: 'Invasões seguintes no Infinito', ondaVencida: 'Invasão vencida no Infinito',
+    vitoria: 'Final: a ilha resistiu', derrota: 'Final: o Ancestral tomou a ilha', semDefesa: 'Final: ilha sem defesa',
+  };
+  const grid = document.getElementById('grid');
+  Cutscene.ids().forEach((id, i) => {
+    const b = document.createElement('button'); if (i === 0) b.className = 'primary';
+    b.innerHTML = `${id}<small>${INFO[id] || ''}</small>`;
+    b.onclick = () => {
+      const modo = document.getElementById('modo').value;
+      Cutscene.play(id, { modo, vars: { onda: 3 } }).then((r) => {
+        document.getElementById('log').textContent = `Cena "${r.id}" ${r.pulada ? 'pulada' : 'assistida até o fim'}.`;
+      });
+    };
+    grid.appendChild(b);
+  });
+</script>
+</body>
+</html>
