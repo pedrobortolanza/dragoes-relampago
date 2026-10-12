@@ -133,7 +133,9 @@ Registro das espécies descobertas na partida (por compra, chocagem ou ovo). Mos
 
 Cada dragão é **desenhado em vetor (SVG)** de corpo inteiro, de perfil: cabeça com chifres e olho, corpo com barriga e escamas, duas asas, cauda e patas com garras. O desenho é montado a partir dos elementos e da raridade, então cada uma das 50 espécies tem uma aparência própria.
 
-**Cores:** o corpo usa a cor do primeiro elemento; asas e barriga usam tons do segundo. Um dragão puro fica todo em tons de uma cor.
+**Cores:** o corpo usa a cor do primeiro elemento; asas e barriga usam tons do segundo, sempre em degradê. Um dragão puro fica todo em tons de uma cor.
+
+**Acabamento:** placas na barriga, escamas, brilho no dorso, asas com ossos e garra, ponta de lança na cauda (quando o elemento não põe outro acessório ali), cabeça com dentes, narina e sobrancelha, e olho com íris na cor do elemento e pupila em fenda.
 
 **Raridade muda o corpo:**
 
@@ -141,8 +143,8 @@ Cada dragão é **desenhado em vetor (SVG)** de corpo inteiro, de perfil: cabeç
 |---|---|
 | Comum | Forma básica, base cinza |
 | Raro | Espinhos nas costas e na cauda, base azul |
-| Épico | Asas maiores e um babado atrás da cabeça, base roxa |
-| Lendário | Chifres e espinhos dourados, aura pulsante, coroa dourada flutuando sobre a cabeça, base dourada |
+| Épico | Asas maiores e crista atrás da cabeça, base roxa |
+| Lendário | Crista, chifres e espinhos dourados, aura pulsante, coroa dourada com gema sobre a cabeça, base dourada |
 
 **Cada elemento acrescenta detalhes:**
 

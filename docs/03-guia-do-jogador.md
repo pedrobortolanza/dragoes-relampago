@@ -17,7 +17,7 @@ Você começa com:
 
 | Construção | O que faz ao clicar |
 |---|---|
-| 🏛️ **Habitat** | Coleta o ouro acumulado (o balão de moeda mostra quanto há e pulsa quando enche). Até 3 dragões passeiam em cada um. |
+| 🏛️ **Habitat** | Coleta o ouro acumulado (o balão de moeda mostra quanto há e pulsa quando enche). Até 3 dragões passeiam em cada um, e o habitat ganha a decoração do elemento da maioria deles: lago de lava 🔥, lagoa 💧, arbustos e flores 🌿, rochas 🪨, bobina elétrica ⚡, cristais de gelo ❄️, engrenagem ⚙️, cristais roxos 🌑 ou pilares dourados ✨. |
 | 🌱 **Fazenda** | Planta a semente escolhida, ou colhe quando o balão ✋ aparecer. Um broto cresce conforme o progresso. |
 | ➕ **Lote tracejado** | Compra o próximo habitat ou fazenda pelo preço mostrado (até 10 habitats e 12 fazendas). |
 | 📜 **Mural de Missões** | Abre as missões; o balão mostra quantas estão prontas para resgatar. |

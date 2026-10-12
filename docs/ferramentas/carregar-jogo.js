@@ -5,7 +5,10 @@ module.exports = function load(path) {
   // O jogo pode ter mais de um <script> (ex.: o áudio vem antes); usamos o que contém as tabelas de dados.
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
   const src = scripts.find(s => s.includes('DATA-START')) || scripts[scripts.length - 1];
-  const el = () => ({ innerHTML: '', appendChild() {}, children: [], scrollTop: 0, style: {} });
+  // Elemento falso: qualquer propriedade desconhecida vira uma função que não faz nada,
+  // para o script do jogo carregar sem navegador mesmo quando a interface mudar.
+  const el = () => new Proxy({ innerHTML: '', children: [], childNodes: [], scrollTop: 0, style: {}, dataset: {} },
+    { get: (o, k) => (k in o ? o[k] : (typeof k === 'string' ? () => el() : undefined)) });
   const ctx = {
     Som: new Proxy({}, { get: () => () => {} }),
     console, Math, JSON, Object, Array, Set, String, Number, parseInt,

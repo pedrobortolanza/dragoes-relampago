@@ -96,6 +96,9 @@ body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 .iso .heart { transform-box: fill-box; transform-origin: center; animation: beat 1.2s ease-in-out infinite; }
 .iso .flag { transform-box: fill-box; transform-origin: 0 50%; animation: flagw 1.4s ease-in-out infinite alternate; }
 .iso .smoke { animation: wisp 3s ease-in-out infinite; }
+.iso .glow { animation: pulse 1.6s ease-in-out infinite; }
+.iso .foam { animation: foam 6s linear infinite; }
+@keyframes foam { to { stroke-dashoffset: -48; } }
 .iso .ready-crop { animation: hover 1s ease-in-out infinite; }
 .iso .ghost { opacity: .55; }
 .iso .ghost:hover { opacity: .9; }
@@ -1986,81 +1989,126 @@ function shade(hex, f) {
   return '#' + ch.map(c => c.toString(16).padStart(2, '0')).join('');
 }
 const RING = { C: '#b9b3cc', R: '#4fb3ff', E: '#c77dff', L: '#ffb703' };
+// Gradientes e padrões compartilhados por todos os desenhos (um <svg> oculto no topo da página)
+function buildDefs() {
+  const stops = arr => arr.map(([o, c, op]) => `<stop offset="${o}" stop-color="${c}"${op !== undefined ? ` stop-opacity="${op}"` : ''}/>`).join('');
+  const lg = (id, arr, x2 = 0, y2 = 1) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}">${stops(arr)}</linearGradient>`;
+  const rg = (id, arr, cx = '50%', cy = '50%', r = '50%') => `<radialGradient id="${id}" cx="${cx}" cy="${cy}" r="${r}">${stops(arr)}</radialGradient>`;
+  let d = '';
+  EL_KEYS.forEach(k => {
+    const c = EL[k].c;
+    d += lg(`gb-${k}`, [[0, shade(c, 0.38)], [0.5, c], [1, shade(c, -0.38)]]);
+    d += lg(`gw-${k}`, [[0, shade(c, 0.32)], [1, shade(c, -0.3)]], 1, 1);
+    d += lg(`gl-${k}`, [[0, shade(c, 0.78)], [1, shade(c, 0.42)]]);
+  });
+  d += rg('g-shadow', [[0, '#000', 0.5], [1, '#000', 0]]);
+  d += lg('g-horn', [[0, '#fffaf0'], [1, '#c9b07e']]);
+  d += lg('g-gold', [[0, '#fff3b0'], [1, '#e0950f']]);
+  d += rg('g-auraL', [[0, '#ffd166', 0.55], [1, '#ffd166', 0]]);
+  d += rg('g-eye', [[0, '#ffffff'], [1, '#d9e1f2']], '40%', '35%');
+  d += rg('g-sea', [[0, '#49b6e8'], [0.55, '#2475a8'], [1, '#103a5e']], '50%', '48%', '75%');
+  d += lg('g-grass', [[0, '#9be06a'], [1, '#4c9f3a']], 1, 1);
+  d += lg('g-sand', [[0, '#f8e6ad'], [1, '#d6b86f']]);
+  d += lg('g-cliffL', [[0, '#9a6a3c'], [1, '#4a2f19']]);
+  d += lg('g-cliffR', [[0, '#7a5230'], [1, '#331f10']]);
+  d += rg('g-lava', [[0, '#fff3a0'], [0.45, '#ff9a1f'], [1, '#b8290b']]);
+  d += rg('g-water', [[0, '#c9f3ff'], [0.5, '#52bdf2'], [1, '#1d6aa8']], '40%', '35%');
+  d += lg('g-stone', [[0, '#f1ebdb'], [1, '#b3a483']]);
+  d += lg('g-wood', [[0, '#c99358'], [1, '#76502c']]);
+  d += lg('g-leaf', [[0, '#8fe070'], [1, '#2c7f37']]);
+  d += lg('g-pine', [[0, '#5cbf6a'], [1, '#1f6b3a']]);
+  d += lg('g-crystal', [[0, '#f0d9ff'], [1, '#7436c9']]);
+  d += lg('g-ice', [[0, '#ffffff'], [1, '#93d4fb']]);
+  d += lg('g-steel', [[0, '#eef2f7'], [1, '#7f8a9c']]);
+  d += lg('g-mount', [[0, '#e3b8ff'], [1, '#8a4fc0']]);
+  d += lg('g-dome', [[0, '#fffaf0'], [1, '#e9d3a6']], 1, 1);
+  d += lg('g-roof', [[0, '#ff7b6b'], [1, '#c43d3d']]);
+  d += `<pattern id="p-grass" width="26" height="13" patternUnits="userSpaceOnUse"><path d="M3,10 l1.6,-4.5 l1.6,4.5 M15,5 l1.3,-3.4 l1.3,3.4 M21,12 l1.1,-3 l1.1,3" stroke="#3a8a2f" stroke-width="1.2" fill="none" opacity=".55"/></pattern>`;
+  d += `<pattern id="p-cobble" width="16" height="9" patternUnits="userSpaceOnUse"><rect width="16" height="9" fill="#cdb47c"/><rect x="1" y="1" width="7" height="3.2" rx="1.6" fill="#e9d6a4"/><rect x="9" y="1" width="6" height="3.2" rx="1.6" fill="#e2cd97"/><rect x="4" y="5.2" width="7" height="3" rx="1.5" fill="#ecdbad"/></pattern>`;
+  return `<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>${d}</defs></svg>`;
+}
+document.body.insertAdjacentHTML('afterbegin', buildDefs());
 const dgCache = new Map();
 // Dragão desenhado em SVG (viewBox 120x100, olhando para a direita). Partes animadas por CSS:
 // .all (flutuar), .wing (bater asas), .tail (balançar), .head (cabeça), .eye (piscar) e acessórios por elemento.
 function dragonSVG(els, rar, seed = 0) {
   const key = els.join('+') + rar + (seed % 9);
   if (dgCache.has(key)) return dgCache.get(key);
-  const O = '#1b1230', sw = 'stroke="#1b1230" stroke-width="2" stroke-linejoin="round"';
-  const c1 = EL[els[0]].c, c2 = EL[els[1] || els[0]].c;
-  const body = c1, dark = shade(c1, -0.35), belly = shade(c2, 0.5), wing = shade(c2, -0.08), wingD = shade(c2, -0.42);
-  const horn = rar === 'L' ? '#ffd166' : '#f1e4c6';
-  const has = e => els.includes(e);
+  const O = '#1b1230', sw = `stroke="${O}" stroke-width="2" stroke-linejoin="round"`, thin = `stroke="${O}" stroke-width="1.3" stroke-linejoin="round"`;
+  const e1 = els[0], e2 = els[1] || els[0];
+  const c1 = EL[e1].c, c2 = EL[e2].c;
+  const B = `url(#gb-${e1})`, W = `url(#gw-${e2})`, BL = `url(#gl-${e2})`;
+  const dark = shade(c1, -0.4), wingD = shade(c2, -0.5), bone = shade(c2, -0.6);
   const tier = { C: 0, R: 1, E: 2, L: 3 }[rar];
+  const horn = tier === 3 ? 'url(#g-gold)' : 'url(#g-horn)';
+  const spikeF = tier === 3 ? 'url(#g-gold)' : dark;
+  const has = e => els.includes(e);
   const top = x => 60 - 17 * Math.sqrt(Math.max(0, 1 - ((x - 56) / 27) ** 2));
   const dl = -((seed * 0.37) % 2).toFixed(2);
   const WING = 'M50,50 C40,32 40,14 50,-2 C54,10 60,12 67,8 C65,19 69,25 77,27 C67,36 58,44 50,50Z';
   const RIBS = 'M50,50 L50,-2 M50,50 L67,8 M50,50 L77,27';
   const ws = tier >= 2 ? 'transform="translate(50 50) scale(1.18) translate(-50 -50)"' : '';
+  const iris = has('trevas') ? '#c084fc' : has('luz') ? '#ffd23f' : has('gelo') ? '#4fc3f7' : has('fogo') ? '#ff6a00' : '#f2a01c';
   let g = `<svg class="dg" viewBox="-6 -8 132 108" style="--dl:${dl}s" aria-hidden="true">`;
-  g += `<ellipse class="shadow" cx="58" cy="94" rx="34" ry="5"/>`;
-  g += `<ellipse class="base" cx="58" cy="94" rx="28" ry="3" fill="${RING[rar]}" opacity=".55"/>`;
-  if (tier === 3) g += `<circle class="aura" cx="60" cy="50" r="50" fill="${c1}" opacity=".2"/>`;
+  g += `<ellipse class="shadow" cx="58" cy="93" rx="38" ry="7" fill="url(#g-shadow)"/>`;
+  g += `<ellipse class="base" cx="58" cy="93" rx="30" ry="4.5" fill="none" stroke="${RING[rar]}" stroke-width="2.2" opacity=".8"/>`;
+  if (tier === 3) g += `<circle class="aura" cx="60" cy="50" r="56" fill="url(#g-auraL)"/>`;
   g += '<g class="all">';
   // asa de trás
-  g += `<g class="wing wing-b"><g transform="translate(-9 3)"><path d="${WING}" fill="${wingD}" ${sw} ${ws}/></g></g>`;
-  // cauda + ponta por elemento
-  g += `<g class="tail"><path d="M36,56 C22,58 14,52 10,40 C9,36 6,34 3,37 C6,40 6,44 9,50 C14,62 24,68 38,68Z" fill="${body}" ${sw}/>`;
-  if (tier >= 1) g += `<path d="M18,56 l-2,-7 l6,4Z M26,61 l-1,-7 l6,4Z" fill="${dark}" ${sw}/>`;
+  g += `<g class="wing wing-b"><g transform="translate(-9 3)"><g ${ws}><path d="${WING}" fill="${wingD}" ${sw}/><path d="${RIBS}" stroke="${shade(c2, -0.68)}" stroke-width="1.8" fill="none"/></g></g></g>`;
+  // cauda
+  g += `<g class="tail"><path d="M36,55 C22,57 14,52 10,41 C8,36 5,34 2,36 C4,40 5,45 8,51 C14,63 25,69 39,68Z" fill="${B}" ${sw}/>`;
+  g += `<path d="M13,53 C19,61 28,65 37,65.5" stroke="${shade(c2, 0.5)}" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".85"/>`;
+  if (tier >= 1) g += `<path d="M18,55 l-2,-7 l6,4Z M26,60 l-1,-7 l6,4Z" fill="${spikeF}" ${sw}/>`;
+  const tipAcc = ['fogo', 'eletrico', 'planta', 'agua', 'trevas'].some(has);
+  if (!tipAcc) g += `<path d="M3,37 L-5,29 L4,31 L2,21 L9,33Z" fill="${spikeF}" ${sw}/>`;
   if (has('fogo')) g += `<g class="flame"><path d="M3,38 C-4,30 0,22 5,14 C5,23 12,24 10,33 C9,38 6,40 3,38Z" fill="#ff8c1a" ${sw}/><path d="M5,35 C2,31 4,27 6,23 C7,28 10,29 8,34Z" fill="#ffe066"/></g>`;
   if (has('eletrico')) g += `<path class="zap" d="M8,36 L0,27 L6,27 L1,15 L12,29 L6,29 L11,36Z" fill="#ffe14d" ${sw}/>`;
-  if (has('planta')) g += `<path d="M4,37 C-4,32 -6,24 -4,18 C2,22 8,28 4,37Z" fill="#5fd068" ${sw}/><path d="M4,36 L-3,21" stroke="#2f7d38" stroke-width="1.2"/>`;
+  if (has('planta')) g += `<path d="M4,37 C-4,32 -6,24 -4,18 C2,22 8,28 4,37Z" fill="url(#g-leaf)" ${sw}/><path d="M4,36 L-3,21" stroke="#2f7d38" stroke-width="1.2"/>`;
   if (has('agua')) g += `<path d="M5,38 C-2,42 -6,38 -6,32 C-1,34 2,32 4,28Z" fill="#7cc8ff" ${sw}/>`;
   if (has('trevas')) g += `<path d="M4,37 l-8,-6 l9,0 l-6,-9 l9,7Z" fill="#5b3aa8" ${sw}/>`;
   g += '</g>';
   // pata de trás
-  g += `<path d="M40,70 L37,85 Q42,88 48,85 L51,72Z" fill="${dark}" ${sw}/>`;
-  // corpo e barriga
-  g += `<ellipse cx="56" cy="60" rx="27" ry="17" fill="${body}" ${sw}/>`;
-  g += `<path d="M36,66 Q56,80 78,64 Q74,74 58,76 Q42,76 36,66Z" fill="${belly}"/>`;
-  g += `<path d="M46,70 Q47,73 46,75 M54,71 Q55,74 54,77 M62,70 Q63,73 62,76 M70,67 Q71,70 70,73" stroke="${shade(c2, 0.1)}" stroke-width="1.3" fill="none"/>`;
-  // costas: espinhos (Raro+) e acessórios de elemento
-  if (tier >= 1) {
-    [34, 43, 52, 61, 70].forEach(x => { const y = top(x + 3); g += `<path d="M${x},${y + 2} L${x + 3},${y - 8 - tier} L${x + 7},${y + 2}Z" fill="${tier === 3 ? '#ffd166' : dark}" ${sw}/>`; });
-  }
-  if (has('planta')) g += `<path d="M44,45 C46,34 54,30 60,28 C58,36 52,42 44,45Z" fill="#5fd068" ${sw}/><path d="M60,44 C64,36 70,34 76,34 C72,40 68,44 60,44Z" fill="#7fe08a" ${sw}/>`;
-  if (has('terra')) g += `<path d="M40,47 l5,-7 l7,1 l2,7Z M56,44 l4,-8 l8,2 l1,8Z" fill="#9b7a55" ${sw}/>`;
-  if (has('gelo')) g += `<path d="M42,46 l3,-13 l4,13Z M50,44 l4,-17 l4,17Z M60,44 l3,-12 l4,12Z" fill="#dff7ff" ${sw}/>`;
-  if (has('metal')) g += `<path d="M42,52 Q56,46 70,52 L70,60 Q56,55 42,60Z" fill="#c9d1dc" ${sw}/><circle cx="47" cy="55" r="1.6" fill="${O}"/><circle cx="56" cy="52" r="1.6" fill="${O}"/><circle cx="65" cy="55" r="1.6" fill="${O}"/>`;
+  g += `<path d="M40,69 C36,74 36,80 37,85 Q42,88 48,85 L51,72Z" fill="${shade(c1, -0.32)}" ${sw}/><path d="M37,86 l-2,3 M41,87 l-1,3 M45,87 l0,3" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`;
+  // corpo, barriga com placas, escamas e brilho
+  g += `<ellipse cx="56" cy="60" rx="27" ry="17" fill="${B}" ${sw}/>`;
+  g += `<path d="M35,65 Q56,82 79,63 Q76,75 58,77 Q40,77 35,65Z" fill="${BL}" ${thin}/>`;
+  g += `<path d="M41,69.5 Q45.5,72 50,71 M50,73.5 Q55,75.5 60,74 M60,73 Q65,73.5 70,70.5 M45,74.5 Q50,76.5 55,76.5 M58,76.5 Q63,77 68,75" stroke="${shade(c2, 0.05)}" stroke-width="1.1" fill="none" opacity=".75"/>`;
+  g += `<path d="M42,52 q3,-2.2 6,0 M50,48.5 q3,-2.2 6,0 M60,49.5 q3,-2.2 6,0 M46,57 q3,-2.2 6,0 M56,55.5 q3,-2.2 6,0 M66,56 q3,-2.2 6,0" stroke="${shade(c1, -0.28)}" stroke-width="1.2" fill="none" opacity=".6"/>`;
+  g += `<ellipse cx="49" cy="49.5" rx="13" ry="3.8" fill="#fff" opacity=".24"/>`;
+  if (tier >= 1) [34, 43, 52, 61, 70].forEach(x => { const y = top(x + 3); g += `<path d="M${x},${y + 2} L${x + 3},${y - 8 - tier} L${x + 7},${y + 2}Z" fill="${spikeF}" ${sw}/>`; });
+  if (has('planta')) g += `<path d="M44,45 C46,34 54,30 60,28 C58,36 52,42 44,45Z" fill="url(#g-leaf)" ${sw}/><path d="M60,44 C64,36 70,34 76,34 C72,40 68,44 60,44Z" fill="url(#g-leaf)" ${sw}/>`;
+  if (has('terra')) g += `<path d="M40,47 l5,-7 l7,1 l2,7Z M56,44 l4,-8 l8,2 l1,8Z" fill="#9b7a55" ${sw}/><path d="M45,41 l3,2 M60,38 l3,2" stroke="#d8b98c" stroke-width="1"/>`;
+  if (has('gelo')) g += `<path d="M42,46 l3,-13 l4,13Z M50,44 l4,-17 l4,17Z M60,44 l3,-12 l4,12Z" fill="url(#g-ice)" ${sw}/>`;
+  if (has('metal')) g += `<path d="M42,52 Q56,46 70,52 L70,60 Q56,55 42,60Z" fill="url(#g-steel)" ${sw}/><circle cx="47" cy="55" r="1.6" fill="${O}"/><circle cx="56" cy="52" r="1.6" fill="${O}"/><circle cx="65" cy="55" r="1.6" fill="${O}"/>`;
   if (has('agua')) g += `<path d="M44,46 C48,34 58,30 66,34 C60,36 56,42 54,46Z" fill="#7cc8ff" ${sw}/>`;
-  // pata da frente com garras
-  g += `<path d="M62,72 L60,87 Q66,90 72,87 L73,72Z" fill="${body}" ${sw}/><path d="M61,88 l-1,3 M65,89 l0,3 M69,89 l1,3" stroke="${O}" stroke-width="1.6"/>`;
+  // pata da frente
+  g += `<path d="M62,71 C59,76 59,82 60,87 Q66,90 72,87 L74,71Z" fill="${B}" ${sw}/><path d="M61,88 l-1.5,3 M65.5,89 l-.5,3 M70,88.5 l.8,3" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>`;
   // cabeça
   g += '<g class="head">';
-  g += `<path d="M70,52 C74,44 78,40 82,36 L93,44 C86,50 82,56 76,63Z" fill="${body}" ${sw}/>`;
-  g += `<path d="M82,28 C80,18 76,13 69,11 C76,17 78,24 86,27Z" fill="${horn}" ${sw}/>`;
-  g += `<path d="M90,26 C91,16 89,11 86,5 C94,12 97,19 96,27Z" fill="${horn}" ${sw}/>`;
-  if (has('gelo')) g += `<path d="M86,6 l-3,-7 l6,3Z M70,11 l-6,-4 l7,-1Z" fill="#dff7ff" ${sw}/>`;
-  if (tier >= 2) g += `<path d="M76,30 L66,27 L74,35Z M75,37 L64,37 L74,42Z" fill="${tier === 3 ? '#ffd166' : wing}" ${sw}/>`;
-  g += `<ellipse cx="88" cy="36" rx="14" ry="12" fill="${body}" ${sw}/>`;
-  g += `<ellipse cx="101" cy="41" rx="10" ry="7" fill="${body}" ${sw}/>`;
-  g += `<path d="M93,46 Q101,49 109,43" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
-  g += `<path d="M99,47 l1,3 l2,-3Z" fill="#fff"/>`;
-  g += `<circle cx="106" cy="38" r="1.3" fill="${O}"/>`;
-  if (has('metal')) g += `<path d="M80,30 Q90,22 99,30 L97,33 Q90,27 82,33Z" fill="#c9d1dc" ${sw}/>`;
-  if (has('agua')) g += `<path d="M78,40 C70,41 67,35 69,30 C73,34 77,34 80,36Z" fill="#7cc8ff" ${sw}/><circle class="drip" cx="104" cy="49" r="1.6" fill="#7cc8ff"/>`;
-  if (has('fogo')) g += `<path class="wisp" d="M108,36 q3,-3 1,-6 q3,-2 2,-5" stroke="#ff9f1c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
-  const pupil = has('trevas') ? '#c084fc' : has('luz') ? '#ffb703' : O;
-  g += `<g class="eye"><ellipse cx="90" cy="33" rx="4.6" ry="5.2" fill="#fff" ${sw.replace('2"', '1.5"')}/><circle cx="91.6" cy="33.5" r="2.5" fill="${pupil}"/><circle cx="92.6" cy="32" r=".9" fill="#fff"/></g>`;
-  g += `<path d="M84,26 Q90,23 95,27" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
-  if (tier === 3) g += `<path class="halo" d="M80,22 l2,-10 l4,6 l4,-10 l4,10 l4,-6 l1,10Z" fill="#ffd166" ${sw}/>`;
+  g += `<path d="M68,52 C72,44 77,40 82,36 L94,44 C87,50 83,57 77,64Z" fill="${B}" ${sw}/>`;
+  g += `<path d="M79,60 l4,-4 M82.5,55 l4,-4 M86.5,50 l4,-3.5" stroke="${shade(c2, 0.5)}" stroke-width="3.4" stroke-linecap="round"/>`;
+  g += `<path d="M82,28 C80,18 76,13 69,11 C76,17 78,24 86,27Z" fill="${horn}" ${sw}/><path d="M75.5,17.5 l3,-1.2 M78.5,22 l3,-1.2" stroke="${O}" stroke-width="1" opacity=".45"/>`;
+  g += `<path d="M90,26 C91,16 89,11 86,5 C94,12 97,19 96,27Z" fill="${horn}" ${sw}/><path d="M89,13.5 l3,0 M90,19 l3.4,0" stroke="${O}" stroke-width="1" opacity=".45"/>`;
+  if (has('gelo')) g += `<path d="M86,6 l-3,-7 l6,3Z M70,11 l-6,-4 l7,-1Z" fill="url(#g-ice)" ${sw}/>`;
+  if (tier >= 2) g += `<path d="M76,30 L66,27 L74,35Z M75,37 L64,37 L74,42Z M77,44 L68,47 L77,49Z" fill="${tier === 3 ? 'url(#g-gold)' : W}" ${sw}/>`;
+  g += `<path d="M75,38 C74,27 82,22 91,22 C99,22 104,27 106,32 L113,36 C116,39 115,45 110,46 L96,48 C86,50 76,47 75,38Z" fill="${B}" ${sw}/>`;
+  g += `<path d="M80,42 Q88,48 96,47" stroke="${shade(c1, -0.32)}" stroke-width="1.4" fill="none" opacity=".6"/>`;
+  g += `<ellipse cx="101" cy="31.5" rx="6.5" ry="2.2" fill="#fff" opacity=".28"/>`;
+  g += `<path d="M93,46 Q102,50 111.5,45" stroke="${O}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  g += `<path d="M98,47 l1,3.2 l1.6,-3.2Z M104,46.6 l.9,2.8 l1.4,-3Z" fill="#fff" stroke="${O}" stroke-width=".6"/>`;
+  g += `<ellipse cx="110" cy="37.5" rx="1.5" ry="1" fill="${O}"/>`;
+  if (has('metal')) g += `<path d="M80,30 Q90,22 99,30 L97,33 Q90,27 82,33Z" fill="url(#g-steel)" ${sw}/>`;
+  if (has('agua')) g += `<path d="M78,40 C70,41 67,35 69,30 C73,34 77,34 80,36Z" fill="#7cc8ff" ${sw}/><circle class="drip" cx="107" cy="50" r="1.6" fill="#7cc8ff"/>`;
+  if (has('fogo')) g += `<path class="wisp" d="M113,35 q3,-3 1,-6 q3,-2 2,-5" stroke="#ff9f1c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  g += `<g class="eye"><ellipse cx="90" cy="32" rx="5" ry="5.6" fill="url(#g-eye)" stroke="${O}" stroke-width="1.5"/><circle cx="91.3" cy="32.6" r="3.3" fill="${iris}"/><ellipse cx="91.6" cy="32.6" rx="1" ry="2.6" fill="${O}"/><circle cx="92.9" cy="30.6" r="1.1" fill="#fff"/></g>`;
+  g += `<path d="M83.5,26.5 Q90,22.5 97,27" stroke="${O}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  if (tier === 3) g += `<path class="halo" d="M80,22 l2,-10 l4,6 l4,-10 l4,10 l4,-6 l1,10Z" fill="url(#g-gold)" ${sw}/><circle cx="90" cy="16" r="1.6" fill="#ff5d8f"/>`;
   g += '</g>';
-  // asa da frente
-  g += `<g class="wing"><g ${ws}><path d="${WING}" fill="${wing}" ${sw}/><path d="${RIBS}" stroke="${wingD}" stroke-width="1.6" fill="none"/></g></g>`;
-  // efeitos ao redor
+  // asa da frente: membrana com gradiente, ossos e garra
+  g += `<g class="wing"><g ${ws}><path d="${WING}" fill="${W}" ${sw}/><path d="M50,46 C46,32 46,18 50,6 M52,46 C57,34 61,22 65,12 M54,47 C61,40 68,34 74,29" stroke="#fff" stroke-width="1.2" fill="none" opacity=".22"/><path d="${RIBS}" stroke="${bone}" stroke-width="2.3" stroke-linecap="round" fill="none"/><path d="M50,-2 l-4,-5 l6,2Z" fill="${horn}" ${thin}/><circle cx="50" cy="50" r="3.2" fill="${bone}"/></g></g>`;
   if (has('trevas')) g += `<g class="wisp"><path d="M24,30 q-4,-6 0,-12 q4,-6 0,-12" stroke="#a78bfa" stroke-width="2" fill="none" opacity=".8"/><path d="M104,62 q-3,-5 0,-10 q3,-5 0,-10" stroke="#a78bfa" stroke-width="2" fill="none" opacity=".6"/></g>`;
-  if (has('luz')) [[16, 18], [110, 14], [28, 84], [112, 70]].forEach(([x, y]) => { g += `<path class="spark" d="M${x},${y - 5} L${x + 1.4},${y - 1.4} L${x + 5},${y} L${x + 1.4},${y + 1.4} L${x},${y + 5} L${x - 1.4},${y + 1.4} L${x - 5},${y} L${x - 1.4},${y - 1.4}Z" fill="#fff6b0"/>`; });
+  if (has('luz')) [[16, 18], [112, 12], [28, 84], [114, 70]].forEach(([x, y]) => { g += `<path class="spark" d="M${x},${y - 5} L${x + 1.4},${y - 1.4} L${x + 5},${y} L${x + 1.4},${y + 1.4} L${x},${y + 5} L${x - 1.4},${y + 1.4} L${x - 5},${y} L${x - 1.4},${y - 1.4}Z" fill="#fff6b0"/>`; });
   if (has('eletrico')) g += `<path class="zap" d="M100,64 l4,6 l-3,0 l4,7" stroke="#ffe14d" stroke-width="2" fill="none"/>`;
   g += '</g></svg>';
   dgCache.set(key, g);
@@ -2172,7 +2220,15 @@ const SPOTS = {
   loja: { at: [1.5, 4.5], n: 'Mercado' },
   arena: { at: [11, 3], n: 'Arena', size: 3 },
 };
-const TREES = [[13.3, 6.2], [13.3, 8.6], [12.9, 0.7], [0.5, 12.9], [13.3, 11.2], [6, 0.5], [0.5, 6]];
+const TREES = [[13.3, 6.2], [13.3, 8.6], [12.9, 0.7], [0.5, 12.9], [13.3, 11.2], [6, 0.5], [0.5, 6], [13.4, 13.4], [3.2, 0.4], [0.4, 3.2]];
+// Flores (f), pedras (r) e arbustos (b) espalhados nos espaços livres
+const DECOR = [[6, 3, 'f'], [3, 6, 'f'], [9, 6.1, 'r'], [6.1, 9.3, 'b'], [12.3, 6, 'f'], [6, 12, 'r'], [9, 12, 'f'], [12.2, 9.1, 'b'], [3, 9.1, 'f'], [9.1, 3.1, 'r'], [13.3, 4.8, 'f'], [4.8, 13.4, 'b']];
+function isoDecor(x, y, k) {
+  const [X, Y] = iso(x, y);
+  if (k === 'r') return `<ellipse cx="${X}" cy="${Y + 2}" rx="11" ry="4" fill="url(#g-shadow)"/><path d="M${X - 10},${Y + 2} Q${X - 9},${Y - 9} ${X},${Y - 10} Q${X + 10},${Y - 9} ${X + 10},${Y + 2}Z" fill="#a3a3ad" stroke="#1b1230" stroke-width="1.4"/><path d="M${X - 4},${Y - 6} l4,-1" stroke="#fff" stroke-width="1.4" opacity=".6"/>`;
+  if (k === 'b') return `<circle cx="${X - 6}" cy="${Y - 4}" r="7" fill="url(#g-leaf)" stroke="#1b1230" stroke-width="1.3"/><circle cx="${X + 5}" cy="${Y - 5}" r="8" fill="url(#g-leaf)" stroke="#1b1230" stroke-width="1.3"/><circle cx="${X + 3}" cy="${Y - 8}" r="1.8" fill="#ffd23f"/>`;
+  return [[-8, 0, '#ff7ab6'], [0, -4, '#ffd23f'], [7, 1, '#ffffff'], [-2, 4, '#c77dff']].map(([dx, dy, c]) => `<path d="M${X + dx},${Y + dy} v-6" stroke="#2f7d38" stroke-width="1.2"/><circle cx="${X + dx}" cy="${Y + dy - 7}" r="2.6" fill="${c}" stroke="#1b1230" stroke-width=".8"/>`).join('');
+}
 const pts = arr => arr.map(p => p.map(v => Math.round(v * 10) / 10).join(',')).join(' ');
 function diamond(cx, cy, w, h) { return [iso(cx - w / 2, cy - h / 2), iso(cx + w / 2, cy - h / 2), iso(cx + w / 2, cy + h / 2), iso(cx - w / 2, cy + h / 2)]; }
 // Lote com faces laterais (altura d) — base de toda construção
@@ -2201,19 +2257,55 @@ function bubble(x, y, icon, full, txt, attrs = '') {
 // Encaixa o SVG de um dragão dentro do mapa
 function placeDragon(d, x, y, w) {
   const h = w * 108 / 132;
-  return dragonSVG(d.els, d.rar, d.id).replace('<svg class="dg" viewBox="-6 -8 132 108" style="', `<svg class="dg" viewBox="-6 -8 132 108" x="${Math.round(x - w / 2)}" y="${Math.round(y - h * 0.9)}" style="width:${w}px;height:${Math.round(h)}px;`);
+  return dragonSVG(d.els, d.rar, d.id).replace('<svg class="dg" viewBox="-6 -8 132 108" style="', `<svg class="dg" viewBox="-6 -8 132 108" x="${Math.round(x - w / 2)}" y="${Math.round(y - h * 0.9)}" width="${w}" height="${Math.round(h)}" style="width:${w}px;height:${Math.round(h)}px;`);
+}
+const HAB_THEME = {
+  fogo: ['#7a4334', '#4f2a20', '#3a1e17'], agua: ['#f0dca0', '#b99a5a', '#9a7d44'], planta: ['#86d062', '#4f923a', '#3e7a2d'],
+  terra: ['#c19466', '#87603a', '#6c4c2c'], eletrico: ['#9aa2b6', '#636a7c', '#4f5565'], gelo: ['#f0faff', '#a9cfe6', '#8db7d2'],
+  metal: ['#b6bfcd', '#78818f', '#626a78'], trevas: ['#55437a', '#33264b', '#271c3a'], luz: ['#fdf6e2', '#cfc29b', '#b6a980'], none: ['#b2dc86', '#6c9a48', '#5a843a'],
+};
+function habTheme(ds) {
+  if (!ds.length) return 'none';
+  const n = {};
+  ds.forEach(d => { n[d.els[0]] = (n[d.els[0]] || 0) + 1; });
+  return Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+}
+// Decoração do habitat conforme o elemento que mais aparece nele (fica atrás dos dragões)
+function habDecor(th, X, Y) {
+  const O = 'stroke="#1b1230" stroke-width="1.6" stroke-linejoin="round"';
+  switch (th) {
+    case 'fogo': return `<ellipse cx="${X + 26}" cy="${Y + 4}" rx="20" ry="9" fill="url(#g-lava)" stroke="#2a120a" stroke-width="2.5"/><ellipse class="glow" cx="${X + 26}" cy="${Y + 3}" rx="10" ry="4" fill="#fff3a0" opacity=".7"/>
+      <path d="M${X - 48},${Y - 2} l7,-13 l8,12Z M${X - 38},${Y + 8} l6,-10 l7,9Z M${X + 6},${Y - 22} l6,-12 l7,11Z" fill="#3d2621" ${O}/><path class="smoke" d="M${X + 30},${Y - 6} q4,-6 0,-12 q-4,-6 0,-12" stroke="#c9b3a8" stroke-width="2" fill="none" opacity=".5"/>`;
+    case 'agua': return `<ellipse cx="${X + 18}" cy="${Y + 2}" rx="30" ry="14" fill="url(#g-water)" stroke="#e8d49a" stroke-width="3.5"/><path class="wave" d="M${X + 4},${Y + 2} q6,-3 12,0 t12,0" stroke="#fff" stroke-width="1.6" fill="none" opacity=".7"/>
+      <circle cx="${X - 44}" cy="${Y}" r="5" fill="#d9c08a" ${O}/><path d="M${X + 42},${Y - 6} c-2,-10 4,-14 6,-18 M${X + 46},${Y - 6} c0,-8 6,-10 8,-14" stroke="#3a8a2f" stroke-width="2" fill="none"/>`;
+    case 'planta': return `<circle cx="${X - 44}" cy="${Y - 4}" r="11" fill="url(#g-leaf)" ${O}/><circle cx="${X - 36}" cy="${Y + 4}" r="8" fill="url(#g-leaf)" ${O}/><circle cx="${X + 40}" cy="${Y - 6}" r="10" fill="url(#g-leaf)" ${O}/>
+      ${[[-20, 10, '#ff7ab6'], [24, 8, '#ffd23f'], [-4, -20, '#ffffff'], [14, -16, '#ff7ab6']].map(([dx, dy, c]) => `<circle cx="${X + dx}" cy="${Y + dy}" r="2.6" fill="${c}" stroke="#1b1230" stroke-width=".8"/>`).join('')}`;
+    case 'terra': return `<ellipse cx="${X - 40}" cy="${Y - 2}" rx="12" ry="8" fill="#9a8a78" ${O}/><ellipse cx="${X + 38}" cy="${Y - 4}" rx="10" ry="7" fill="#8a7a68" ${O}/><ellipse cx="${X + 24}" cy="${Y + 10}" rx="7" ry="5" fill="#a8988a" ${O}/>
+      <path d="M${X - 44},${Y - 6} l6,2 M${X + 34},${Y - 7} l5,2" stroke="#fff" stroke-width="1" opacity=".5"/>`;
+    case 'eletrico': return `<rect x="${X + 34}" y="${Y - 40}" width="6" height="40" fill="url(#g-steel)" ${O}/><path d="M${X + 31},${Y - 20} h12 M${X + 31},${Y - 28} h12" stroke="#1b1230" stroke-width="1.6"/><circle cx="${X + 37}" cy="${Y - 44}" r="8" fill="url(#g-steel)" ${O}/>
+      <path class="zap" d="M${X + 44},${Y - 46} l6,-4 l-2,6 l7,-3" stroke="#ffe14d" stroke-width="2.2" fill="none"/><path class="zap" d="M${X + 30},${Y - 48} l-6,-5 l1,6 l-7,-2" stroke="#ffe14d" stroke-width="2.2" fill="none" style="animation-delay:-.5s"/>`;
+    case 'gelo': return `<path d="M${X - 48},${Y} l4,-22 l6,22Z M${X - 40},${Y + 6} l3,-16 l5,16Z M${X + 36},${Y - 2} l5,-26 l6,26Z M${X + 46},${Y + 4} l3,-14 l4,14Z" fill="url(#g-ice)" ${O}/>
+      ${[[-10, 12], [16, -16], [22, 12], [-24, -12]].map(([dx, dy]) => `<circle cx="${X + dx}" cy="${Y + dy}" r="1.8" fill="#fff"/>`).join('')}`;
+    case 'metal': return `<path d="M${X - 30},${Y - 4} L${X},${Y - 19} M${X - 30},${Y + 4} L${X + 30},${Y - 26}" stroke="#5d6575" stroke-width="1.4" opacity=".7"/>
+      <g transform="translate(${X + 38} ${Y - 12})"><circle r="11" fill="url(#g-steel)" ${O}/><circle r="4" fill="#626a78" ${O}/>${[0, 45, 90, 135, 180, 225, 270, 315].map(a => `<rect x="-2.5" y="-15" width="5" height="5" fill="url(#g-steel)" stroke="#1b1230" stroke-width="1" transform="rotate(${a})"/>`).join('')}</g>`;
+    case 'trevas': return `<path d="M${X - 48},${Y + 2} l5,-24 l7,24Z M${X - 38},${Y + 8} l4,-16 l6,16Z M${X + 36},${Y} l6,-28 l7,28Z" fill="url(#g-crystal)" ${O}/>
+      <ellipse class="glow" cx="${X + 42}" cy="${Y - 12}" rx="5" ry="10" fill="#e9c6ff" opacity=".6"/><path class="smoke" d="M${X - 10},${Y - 14} q-4,-6 0,-12 q4,-6 0,-12" stroke="#a78bfa" stroke-width="2" fill="none" opacity=".6"/>`;
+    case 'luz': return `${[[-44, -2], [40, -6]].map(([dx, dy]) => `<rect x="${X + dx - 5}" y="${Y + dy - 36}" width="10" height="36" fill="url(#g-stone)" ${O}/><rect x="${X + dx - 8}" y="${Y + dy - 42}" width="16" height="7" rx="2" fill="url(#g-gold)" ${O}/><circle class="glow" cx="${X + dx}" cy="${Y + dy - 48}" r="5" fill="#fff6b0"/>`).join('')}`;
+  }
+  return `<path d="M${X - 40},${Y - 2} l3,-9 l3,9 M${X - 32},${Y + 4} l3,-8 l3,8 M${X + 34},${Y - 4} l3,-9 l3,9" stroke="#2f6b2a" stroke-width="2" fill="none"/>`;
 }
 function isoHabitat(i) {
   const [cx, cy] = HAB_LOTS[i];
   const [X, Y] = iso(cx, cy);
   const ds = habDragons(i), h = S.habitats[i];
-  const el = ds.length ? ds[0].els[0] : null;
-  const col = el ? EL[el].c : '#8fbf6a';
+  const th = habTheme(ds), [top, s1, s2] = HAB_THEME[th];
   const g = habGps(i), cap = Math.max(50, g * 60), full = h.stored >= cap - 0.5 && g > 0;
   let out = `<g class="bld" data-a="collect" data-i="${i}" tabindex="0" role="button" aria-label="Habitat ${i + 1}: ${ds.length} de ${HAB_CAP} dragões, ${fmt(g)} de ouro por segundo"><title>Habitat ${i + 1} · ${ds.length}/${HAB_CAP} dragões · ${fmt(g)} ouro/s</title>`;
-  out += slab(cx, cy, 1.9, 1.9, 9, shade(col, 0.45), shade(col, -0.25), shade(col, -0.4));
-  out += `<ellipse cx="${X + 20}" cy="${Y + 6}" rx="15" ry="7" fill="${shade(col, 0.1)}" stroke="rgba(0,0,0,.2)"/>`;
-  out += `<path d="M${X - 40},${Y - 2} l3,-9 l3,9 M${X - 32},${Y + 4} l3,-8 l3,8" stroke="#2f6b2a" stroke-width="2" fill="none"/>`;
+  out += `<ellipse cx="${X}" cy="${Y + 14}" rx="74" ry="26" fill="url(#g-shadow)" opacity=".5"/>`;
+  out += slab(cx, cy, 1.9, 1.9, 10, top, s1, s2);
+  out += `<polygon points="${pts(diamond(cx, cy, 1.5, 1.5))}" fill="#fff" opacity=".12"/>`;
+  out += `<polyline points="${pts([diamond(cx, cy, 1.9, 1.9)[3], diamond(cx, cy, 1.9, 1.9)[0], diamond(cx, cy, 1.9, 1.9)[1]])}" fill="none" stroke="#fff" stroke-width="1.5" opacity=".35"/>`;
+  out += habDecor(th, X, Y);
   const spots = [[-22, -2], [6, -12], [2, 12]];
   ds.map((d, k) => ({ d, o: spots[k] })).sort((a, b) => a.o[1] - b.o[1]).forEach(({ d, o }) => {
     out += `<g class="roam" style="animation-delay:${-((d.id * 1.7) % 7).toFixed(1)}s">${placeDragon(d, X + o[0] * 1.15, Y + o[1] * 1.15, 70)}</g>`;
@@ -2232,7 +2324,8 @@ function isoFarm(i) {
   const [X, Y] = iso(cx, cy);
   const f = S.farms[i];
   let out = `<g class="bld" data-a="farm" data-i="${i}" tabindex="0" role="button" aria-label="Fazenda ${i + 1}">`;
-  out += slab(cx, cy, 0.92, 0.92, 6, '#7a5230', '#5a3a20', '#4a2f19');
+  out += slab(cx, cy, 0.92, 0.92, 6, '#86592f', '#5a3a20', '#4a2f19');
+  out += `<polygon points="${pts(diamond(cx, cy, 0.92, 0.92))}" fill="none" stroke="#c9a46a" stroke-width="2" opacity=".6"/>`;
   out += `<path d="M${X - 18},${Y - 3} l14,7 M${X - 10},${Y - 7} l14,7 M${X - 2},${Y - 11} l14,7 M${X - 12},${Y + 3} l14,7" stroke="#5a3a20" stroke-width="2"/>`;
   if (!f.crop) out += `<text x="${X}" y="${Y + 5}" text-anchor="middle" font-size="13" opacity=".7">${CROPS[S.selCrop].i}</text>`;
   else {
@@ -2251,37 +2344,41 @@ function isoSpecial(k) {
   const [X, Y] = iso(cx, cy);
   let out = `<g class="bld" data-a="tab" data-k="${k}" tabindex="0" role="button" aria-label="Abrir ${sp.n}">`;
   if (k === 'arena') {
-    out += slab(cx, cy, 2.9, 2.9, 10, '#c9b48a', '#8f7a52', '#7a6744');
+    out += `<ellipse cx="${X}" cy="${Y + 18}" rx="110" ry="40" fill="url(#g-shadow)" opacity=".5"/>`;
+    out += slab(cx, cy, 2.9, 2.9, 10, '#cdb88e', '#8f7a52', '#7a6744');
     out += `<ellipse cx="${X}" cy="${Y}" rx="70" ry="35" fill="#a8895a" stroke="#1b1230" stroke-width="2"/>`;
-    out += `<path d="M${X - 70},${Y} v-30 a70,35 0 0 1 140,0 v30 a70,35 0 0 0 -140,0Z" fill="#d9c49a" stroke="#1b1230" stroke-width="2"/>`;
+    out += `<path d="M${X - 70},${Y} v-30 a70,35 0 0 1 140,0 v30 a70,35 0 0 0 -140,0Z" fill="url(#g-stone)" stroke="#1b1230" stroke-width="2"/>`;
+    out += `<path d="M${X - 70},${Y - 15} a70,35 0 0 0 140,0" stroke="#9c8a66" stroke-width="1.5" fill="none"/>`;
     for (let a = 0; a < 7; a++) { const x = X - 58 + a * 19.3; out += `<path d="M${x - 5},${Y - 6 + Math.abs(a - 3) * 2} v-14 a5,5 0 0 1 10,0 v14Z" fill="#5c4630"/>`; }
     out += `<ellipse cx="${X}" cy="${Y - 30}" rx="56" ry="26" fill="#e8d9b0" stroke="#1b1230" stroke-width="2"/><ellipse cx="${X}" cy="${Y - 28}" rx="40" ry="17" fill="#d6b56d"/>`;
     [[-62, -40], [62, -40], [0, -72]].forEach(([dx, dy], n) => { out += `<path d="M${X + dx},${Y + dy + 26} v-30" stroke="#3b2a1a" stroke-width="2.5"/><path class="flag" d="M${X + dx},${Y + dy - 4} l18,5 l-18,6Z" fill="${['#ff7a3d', '#62e3ff', '#ffcc4d'][n]}" stroke="#1b1230" stroke-width="1.5"/>`; });
     const alert = S.finalPhase ? '☠️' : (S.event && S.event.type === 'selvagem' && S.event.until > S.t) ? '🐲' : (S.battle && !S.battle.over) ? '⚔️' : '';
     if (alert) out += bubble(X + 50, Y - 78, alert, true, '', 'data-a="tab" data-k="arena"');
   } else {
-    out += slab(cx, cy, 1.9, 1.9, 9, '#c8d6a0', '#7f9358', '#6b7d48');
+    out += `<ellipse cx="${X}" cy="${Y + 14}" rx="74" ry="26" fill="url(#g-shadow)" opacity=".5"/>`;
+    out += slab(cx, cy, 1.9, 1.9, 9, '#d4e2aa', '#7f9358', '#6b7d48');
+    out += `<polygon points="${pts(diamond(cx, cy, 1.5, 1.5))}" fill="url(#p-cobble)" opacity=".85"/>`;
     if (k === 'cruzar') {
-      out += `<polygon points="${X - 46},${Y + 6} ${X - 14},${Y - 62} ${X + 14},${Y + 10}" fill="#b07ad6" stroke="#1b1230" stroke-width="2"/>
-        <polygon points="${X - 6},${Y + 10} ${X + 22},${Y - 46} ${X + 48},${Y + 4}" fill="#d39bff" stroke="#1b1230" stroke-width="2"/>
+      out += `<polygon points="${X - 46},${Y + 6} ${X - 14},${Y - 62} ${X + 14},${Y + 10}" fill="url(#g-mount)" stroke="#1b1230" stroke-width="2"/>
+        <polygon points="${X - 6},${Y + 10} ${X + 22},${Y - 46} ${X + 48},${Y + 4}" fill="url(#g-mount)" stroke="#1b1230" stroke-width="2"/><path d="M${X + 22},${Y - 46} L${X + 30},${Y + 6}" stroke="#fff" stroke-width="2" opacity=".25"/>
         <polygon points="${X - 22},${Y - 46} ${X - 14},${Y - 62} ${X - 6},${Y - 46} ${X - 14},${Y - 42}" fill="#fff"/>
         <path class="heart" d="M${X + 4},${Y - 70} c-6,-8 -18,-2 -10,8 l10,10 l10,-10 c8,-10 -4,-16 -10,-8Z" fill="#ff5d8f" stroke="#1b1230" stroke-width="2"/>`;
     } else if (k === 'chocadeira') {
       out += `<ellipse cx="${X}" cy="${Y + 4}" rx="40" ry="16" fill="#8a6a3a" stroke="#1b1230" stroke-width="2"/>
-        <path d="M${X - 30},${Y + 2} C${X - 34},${Y - 44} ${X - 14},${Y - 70} ${X},${Y - 70} C${X + 14},${Y - 70} ${X + 34},${Y - 44} ${X + 30},${Y + 2}Z" fill="#fff3d6" stroke="#1b1230" stroke-width="2"/>
+        <path d="M${X - 30},${Y + 2} C${X - 34},${Y - 44} ${X - 14},${Y - 70} ${X},${Y - 70} C${X + 14},${Y - 70} ${X + 34},${Y - 44} ${X + 30},${Y + 2}Z" fill="url(#g-dome)" stroke="#1b1230" stroke-width="2"/><path d="M${X - 18},${Y - 50} C${X - 22},${Y - 34} ${X - 22},${Y - 18} ${X - 20},${Y - 4}" stroke="#fff" stroke-width="4" fill="none" opacity=".5" stroke-linecap="round"/>
         <circle cx="${X - 10}" cy="${Y - 40}" r="5" fill="#ffb35c"/><circle cx="${X + 12}" cy="${Y - 24}" r="6" fill="#62e3ff"/><circle cx="${X + 6}" cy="${Y - 52}" r="4" fill="#c77dff"/>
         <path d="M${X - 9},${Y + 4} v-16 a9,9 0 0 1 18,0 v16Z" fill="#5c4630"/>`;
       S.eggs.slice(0, 4).forEach((e, n) => { out += `<ellipse cx="${X - 30 + n * 20}" cy="${Y + 22}" rx="6" ry="8" fill="${RING[e.sp.rar]}" stroke="#1b1230" stroke-width="1.5"/>`; });
       const ready = S.eggs.filter(e => e.prog >= e.dur).length;
       if (ready) out += bubble(X + 34, Y - 64, '🐣', true, String(ready), 'data-a="tab" data-k="chocadeira"');
     } else if (k === 'loja') {
-      out += `<rect x="${X - 34}" y="${Y - 22}" width="68" height="26" fill="#8a5a2c" stroke="#1b1230" stroke-width="2"/>
+      out += `<rect x="${X - 34}" y="${Y - 22}" width="68" height="26" fill="url(#g-wood)" stroke="#1b1230" stroke-width="2"/><path d="M${X - 34},${Y - 13} h68 M${X - 34},${Y - 4} h68" stroke="#5c3a1c" stroke-width="1" opacity=".6"/>
         <path d="M${X - 42},${Y - 20} L${X},${Y - 62} L${X + 42},${Y - 20}Z" fill="#fff" stroke="#1b1230" stroke-width="2"/>
-        <path d="M${X - 28},${Y - 34} L${X},${Y - 62} L${X - 12},${Y - 20}Z M${X + 12},${Y - 20} L${X},${Y - 62} L${X + 28},${Y - 34}Z" fill="#ff5d5d"/>
+        <path d="M${X - 28},${Y - 34} L${X},${Y - 62} L${X - 12},${Y - 20}Z M${X + 12},${Y - 20} L${X},${Y - 62} L${X + 28},${Y - 34}Z" fill="url(#g-roof)"/><path d="M${X - 42},${Y - 20} q7,6 14,0 q7,6 14,0 q7,6 14,0 q7,6 14,0 q7,6 14,0 q7,6 14,0" fill="#fff" stroke="#1b1230" stroke-width="1.5"/>
         <text x="${X}" y="${Y - 2}" text-anchor="middle" font-size="16">🪙💎</text>`;
     } else if (k === 'missoes') {
       out += `<path d="M${X - 30},${Y + 8} v-56 M${X + 30},${Y + 8} v-56" stroke="#5c4630" stroke-width="5"/>
-        <rect x="${X - 38}" y="${Y - 58}" width="76" height="44" rx="4" fill="#b88a52" stroke="#1b1230" stroke-width="2"/>
+        <rect x="${X - 38}" y="${Y - 58}" width="76" height="44" rx="4" fill="url(#g-wood)" stroke="#1b1230" stroke-width="2"/><path d="M${X - 42},${Y - 60} L${X},${Y - 74} L${X + 42},${Y - 60}Z" fill="url(#g-roof)" stroke="#1b1230" stroke-width="2"/>
         <rect x="${X - 30}" y="${Y - 52}" width="18" height="22" fill="#fff8e6" transform="rotate(-6 ${X - 21} ${Y - 41})"/><rect x="${X - 8}" y="${Y - 54}" width="18" height="24" fill="#fff8e6"/><rect x="${X + 14}" y="${Y - 50}" width="16" height="20" fill="#fff8e6" transform="rotate(5 ${X + 22} ${Y - 40})"/>`;
       const claim = S.missions.filter(m => missionProg(m) >= m.target).length;
       if (claim) out += bubble(X + 30, Y - 68, '📜', true, String(claim), 'data-a="tab" data-k="missoes"');
@@ -2290,10 +2387,16 @@ function isoSpecial(k) {
   out += pill(X, Y + (size === 3 ? 52 : 40), sp.n);
   return out + '</g>';
 }
-function isoTree(x, y) {
+function isoTree(x, y, n = 0) {
   const [X, Y] = iso(x, y);
-  return `<ellipse cx="${X}" cy="${Y + 2}" rx="12" ry="5" fill="rgba(0,0,0,.25)"/><rect x="${X - 3}" y="${Y - 16}" width="6" height="18" fill="#6b4a2b"/>
-    <circle cx="${X}" cy="${Y - 26}" r="14" fill="#3f9a4a" stroke="#1b1230" stroke-width="1.5"/><circle cx="${X - 6}" cy="${Y - 30}" r="6" fill="#5fc068"/>`;
+  const sh = `<ellipse cx="${X}" cy="${Y + 2}" rx="16" ry="6" fill="url(#g-shadow)"/>`;
+  if (n % 2) return `${sh}<rect x="${X - 3}" y="${Y - 10}" width="6" height="12" fill="#6b4a2b" stroke="#1b1230" stroke-width="1.2"/>
+    <path d="M${X},${Y - 56} L${X + 16},${Y - 24} L${X - 16},${Y - 24}Z M${X},${Y - 44} L${X + 19},${Y - 8} L${X - 19},${Y - 8}Z" fill="url(#g-pine)" stroke="#1b1230" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M${X - 6},${Y - 40} l4,-6 M${X - 9},${Y - 20} l5,-7" stroke="#fff" stroke-width="1.4" opacity=".35"/>`;
+  return `${sh}<path d="M${X - 3},${Y + 1} L${X - 2},${Y - 20} L${X + 2},${Y - 20} L${X + 3},${Y + 1}Z" fill="#7a5230" stroke="#1b1230" stroke-width="1.2"/>
+    <circle cx="${X - 9}" cy="${Y - 24}" r="11" fill="url(#g-leaf)" stroke="#1b1230" stroke-width="1.5"/><circle cx="${X + 9}" cy="${Y - 25}" r="11" fill="url(#g-leaf)" stroke="#1b1230" stroke-width="1.5"/>
+    <circle cx="${X}" cy="${Y - 34}" r="13" fill="url(#g-leaf)" stroke="#1b1230" stroke-width="1.5"/><circle cx="${X - 5}" cy="${Y - 38}" r="5" fill="#b8f09a" opacity=".6"/>
+    <circle cx="${X + 6}" cy="${Y - 28}" r="2.2" fill="#ff5d5d"/><circle cx="${X - 8}" cy="${Y - 22}" r="2.2" fill="#ff5d5d"/>`;
 }
 function viewMap() {
   topLayer = [];
@@ -2303,28 +2406,34 @@ function viewMap() {
   S.farms.forEach((f, i) => objs.push({ d: FARM_LOTS[i][0] + FARM_LOTS[i][1], html: isoFarm(i) }));
   if (S.farms.length < FARM_LOTS.length) { const [x, y] = FARM_LOTS[S.farms.length]; objs.push({ d: x + y, html: isoGhost(x, y, 0.92, 'buyFarm', `+ 🪙${fmt(farmCost())}`) }); }
   Object.keys(SPOTS).forEach(k => objs.push({ d: SPOTS[k].at[0] + SPOTS[k].at[1], html: isoSpecial(k) }));
-  TREES.forEach(([x, y]) => objs.push({ d: x + y, html: isoTree(x, y) }));
+  TREES.forEach(([x, y], n) => objs.push({ d: x + y, html: isoTree(x, y, n) }));
+  DECOR.forEach(([x, y, k]) => objs.push({ d: x + y - 0.5, html: isoDecor(x, y, k) }));
   objs.sort((a, b) => a.d - b.d);
   const [t, r, b, l] = diamond(NG / 2, NG / 2, NG, NG);
   const [st, sr, sb, sl] = diamond(NG / 2, NG / 2, NG + 1.2, NG + 1.2);
   let grid = '';
   for (let k = 1; k < NG; k++) grid += `<path d="M${pts([iso(k, 0)])} L${pts([iso(k, NG)])} M${pts([iso(0, k)])} L${pts([iso(NG, k)])}"/>`;
-  const path = (x1, y1, x2, y2) => `<polygon points="${pts([iso(x1, y1), iso(x2, y1), iso(x2, y2), iso(x1, y2)])}" fill="#d9c58f" opacity=".75"/>`;
+  const path = (x1, y1, x2, y2) => `<polygon points="${pts([iso(x1, y1), iso(x2, y1), iso(x2, y2), iso(x1, y2)])}" fill="url(#p-cobble)" stroke="#a88f5c" stroke-width="1" opacity=".9"/>`;
+  const [ft, fr, fb, fl] = diamond(NG / 2, NG / 2, NG + 2.4, NG + 2.4);
+  const strata = (a, c, side) => [12, 22].map(dy => `<path d="M${pts([[a[0], a[1] + dy]])} L${pts([[c[0], c[1] + dy]])}" stroke="${side ? '#2a190c' : '#3d2614'}" stroke-width="1.5" opacity=".45"/>`).join('');
   const fliers = [...S.dragons].sort((a, c) => RARITY[c.rar].rv - RARITY[a.rar].rv || c.lvl - a.lvl).slice(0, Math.min(2, Math.floor(S.dragons.length / 3)));
   const flyPath = ['M500,40 C860,40 990,250 760,420 C520,580 120,470 90,260 C70,110 260,40 500,40Z', 'M520,560 C200,560 40,380 160,200 C260,60 760,20 900,200 C1000,340 820,560 520,560Z'];
   return `<svg class="iso" viewBox="0 0 1000 600" role="img" aria-label="Mapa da ilha">
-    <defs><linearGradient id="isoSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a7fb8"/><stop offset="1" stop-color="#154a78"/></linearGradient></defs>
-    <rect width="1000" height="600" fill="url(#isoSea)"/>
+    <rect width="1000" height="600" fill="url(#g-sea)"/>
     <g stroke="#9fd6ff" stroke-width="2" stroke-linecap="round" fill="none" opacity=".45">
       ${[[90, 90], [880, 120], [60, 420], [900, 470], [300, 560], [700, 40], [160, 250], [860, 320]].map(([x, y], n) => `<path class="wave" style="animation-delay:${-n * 0.7}s" d="M${x},${y} q10,-6 20,0 t20,0"/>`).join('')}
     </g>
-    <polygon points="${pts([st, sr, sb, sl])}" fill="#e8d49a" transform="translate(0 6)"/>
-    <polygon points="${pts([l, b, [b[0], b[1] + 34], [l[0], l[1] + 34]])}" fill="#7a5532"/>
-    <polygon points="${pts([b, r, [r[0], r[1] + 34], [b[0], b[1] + 34]])}" fill="#5e3f24"/>
-    <polygon points="${pts([l, b, [b[0], b[1] + 10], [l[0], l[1] + 10]])}" fill="#4f8f3a"/>
-    <polygon points="${pts([b, r, [r[0], r[1] + 10], [b[0], b[1] + 10]])}" fill="#3f7a2e"/>
-    <polygon points="${pts([t, r, b, l])}" fill="#6cbf4f"/>
-    <g stroke="rgba(0,0,0,.07)" stroke-width="1">${grid}</g>
+    <polygon points="${pts([ft, fr, fb, fl])}" fill="#bfeaff" opacity=".18" transform="translate(0 16)"/>
+    <polygon class="foam" points="${pts([ft, fr, fb, fl])}" fill="none" stroke="#e9f8ff" stroke-width="3" stroke-dasharray="14 10" opacity=".55" transform="translate(0 16)"/>
+    <polygon points="${pts([st, sr, sb, sl])}" fill="url(#g-sand)" stroke="#c7a85f" stroke-width="1.5" transform="translate(0 8)"/>
+    <polygon points="${pts([l, b, [b[0], b[1] + 34], [l[0], l[1] + 34]])}" fill="url(#g-cliffL)"/>
+    <polygon points="${pts([b, r, [r[0], r[1] + 34], [b[0], b[1] + 34]])}" fill="url(#g-cliffR)"/>
+    ${strata(l, b, 0)}${strata(b, r, 1)}
+    <polygon points="${pts([l, b, [b[0], b[1] + 9], [l[0], l[1] + 9]])}" fill="#4f9a3a"/>
+    <polygon points="${pts([b, r, [r[0], r[1] + 9], [b[0], b[1] + 9]])}" fill="#3e7f2e"/>
+    <polygon points="${pts([t, r, b, l])}" fill="url(#g-grass)" stroke="#2f6b2a" stroke-width="2"/>
+    <polygon points="${pts([t, r, b, l])}" fill="url(#p-grass)"/>
+    <g stroke="rgba(0,0,0,.05)" stroke-width="1">${grid}</g>
     ${path(5.6, 0.4, 6.4, 13.6)}${path(0.4, 5.6, 12.6, 6.4)}${path(0.4, 8.6, 12.6, 9.4)}${path(8.6, 0.4, 9.4, 11.6)}
     ${objs.map(o => o.html).join('')}
     ${topLayer.join('')}

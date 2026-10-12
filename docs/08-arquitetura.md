@@ -111,10 +111,10 @@ O mapa é um único SVG de 1000 × 600 gerado por `viewMap()`:
 
 - **Grade:** 14 × 14 lotes em losango na proporção 2:1. `iso(x, y)` converte coordenadas da grade em pixels (`TW = 64`, `TH = 32`, origem `OX = 500`, `OY = 68`).
 - **Lotes:** `HAB_LOTS` (10 posições de habitat), `FARM_LOTS` (12 fazendas numa fileira na beira sul), `SPOTS` (Mural de Missões, Montanha do Amor, Chocadeira, Mercado e Arena, esta com 3 × 3 lotes) e `TREES`.
-- **Peças de desenho:** `diamond()` calcula o losango de um lote; `slab()` desenha o lote com as faces laterais (base de toda construção); `isoHabitat`, `isoFarm`, `isoSpecial`, `isoGhost` (próximo lote livre, tracejado, com o preço) e `isoTree`. Cenário: mar com ondas animadas, nuvens, praia, penhasco e caminhos.
+- **Peças de desenho:** `diamond()` calcula o losango de um lote; `slab()` desenha o lote com as faces laterais (base de toda construção); `isoHabitat`, `isoFarm`, `isoSpecial`, `isoGhost` (próximo lote livre, tracejado, com o preço) e `isoTree`. Cenário: mar em degradê com espuma animada na borda, nuvens, areia, penhascos com camadas de rocha, grama com textura, caminhos de pedra, árvores frutíferas, pinheiros, flores, pedras e arbustos. Cada habitat recebe a decoração do elemento mais comum entre os seus dragões.
 - **Profundidade:** cada objeto entra numa lista com `d = x + y` e é desenhado em ordem crescente, para que o que está mais "à frente" cubra o de trás.
 - **Camada de cima:** rótulos (`pill`) e balões (`bubble`) não são escritos no lugar; vão para `topLayer` e são desenhados por último, para nunca ficarem escondidos atrás de outra construção.
-- **Dragões no mapa:** `placeDragon()` encaixa o SVG de cada dragão dentro do mapa; até 3 passeiam por habitat e os mais raros voam em volta da ilha.
+- **Dragões no mapa:** `placeDragon()` encaixa o SVG de cada dragão dentro do mapa como `<svg>` aninhado, com `width` e `height` também como atributos (só o CSS fazia alguns navegadores desenharem um dragão gigante no canto); até 3 passeiam por habitat e os mais raros voam em volta da ilha.
 - **Cliques:** cada construção é um `<g class="bld" data-a="...">`, tratado pelo mesmo despacho de ações dos botões.
 - **Celular:** o mapa mantém 920 px de largura dentro de `#mapwrap`, que rola de lado; no primeiro render ele é centralizado.
 
@@ -122,7 +122,7 @@ O mapa é um único SVG de 1000 × 600 gerado por `viewMap()`:
 
 `dragonSVG(els, rar, seed)` monta um **SVG vetorial** (viewBox 120 × 100, dragão olhando para a direita) a partir de três dados: elementos, raridade e uma semente.
 
-- **Cores:** o corpo usa a cor do 1º elemento; asas e barriga, tons da cor do 2º (`shade()` clareia ou escurece um hex).
+- **Cores:** o corpo usa a cor do 1º elemento; asas e barriga, tons da cor do 2º (`shade()` clareia ou escurece um hex). Os degradês de cada elemento são definidos uma única vez num `<svg><defs>` oculto no topo da página (`buildDefs()`) e referenciados por id em todos os dragões.
 - **Partes:** sombra, base colorida pela raridade, asa de trás, cauda, pata de trás, corpo e barriga com escamas, pata da frente com garras, cabeça com chifres, olho e focinho, asa da frente.
 - **Raridade:** Raro+ ganha espinhos nas costas e na cauda; Épico+ ganha asas 18% maiores e um babado na cabeça; Lendário ganha chifres e espinhos dourados, aura pulsante e uma coroa flutuante.
 - **Acessórios por elemento:** cada elemento acrescenta peças (chama na cauda, folhas, pedras, cristais de gelo, placas de metal, nadadeiras de água, raios, fumaça de trevas, brilhos de luz, cor da pupila).
