@@ -1,6 +1,6 @@
 # Como rodar
 
-O jogo é um único arquivo, `dragoncity/index.html`. Não precisa instalar nada.
+O jogo é um único arquivo, `dragoncity/index.html` (cerca de 2,6 MB, porque os modelos 3D vêm dentro dele). Não precisa instalar nada.
 
 ## Jeito mais simples
 
@@ -28,7 +28,7 @@ npx serve dragoncity
 
 ## Internet
 
-O jogo funciona offline, com som e tudo (o áudio é gerado no navegador). A única coisa carregada da internet são as fontes (Lilita One e Nunito, do Google Fonts). Sem internet, o navegador usa fontes de reserva e o jogo continua igual.
+O jogo funciona offline, com som e modelos 3D (o three.js e os modelos vêm embutidos no arquivo, e o áudio é gerado no navegador). A única coisa carregada da internet são as fontes (Lilita One e Nunito, do Google Fonts). Sem internet, o navegador usa fontes de reserva e o jogo continua igual.
 
 ## Publicar na web
 

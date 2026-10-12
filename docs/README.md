@@ -23,7 +23,7 @@ Jogo de navegador inspirado em Dragon City, para uma única sessão: crie, cruze
 
 | | |
 |---|---|
-| Visão | Ilha isométrica clicável, estilo Dragon City, com painéis sobrepostos |
+| Visão | Ilha isométrica clicável, estilo Dragon City, com dragões e construções em 3D (modelos CC0 renderizados em sprites com three.js) e painéis sobrepostos |
 | Elementos | 9 (6 básicos, 3 especiais) |
 | Espécies | 50 (6 Comuns, 18 Raras, 21 Épicas, 5 Lendárias) |
 | Nível máximo do dragão / do jogador | 15 / 30 |
@@ -33,6 +33,12 @@ Jogo de navegador inspirado em Dragon City, para uma única sessão: crie, cruze
 | Eventos aleatórios | 5 tipos, um a cada 60 a 100 s |
 | Áudio | 4 músicas e 48 efeitos sintetizados no navegador, sem arquivos de som |
 | Modos | Rápida (10 min), Padrão (20 min) e Longa (30 min), terminando na Invasão Final; Infinito, com invasões a cada 15 min até a primeira derrota |
+
+## Créditos
+
+- Dragão: "Dragon Evolved", do pacote Ultimate Monsters, de [Quaternius](https://quaternius.com) (CC0).
+- Construções e decoração: KayKit Medieval Hexagon Pack, de [Kay Lousberg](https://kaylousberg.com) (CC0).
+- [three.js](https://threejs.org) r147, com GLTFLoader e SkeletonUtils (licença MIT).
 
 ## Manutenção
 

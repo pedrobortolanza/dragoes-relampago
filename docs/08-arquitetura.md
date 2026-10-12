@@ -5,7 +5,8 @@
 | Decisão | Motivo |
 |---|---|
 | **Um único `index.html`** com HTML, CSS e JavaScript juntos | Roda com dois cliques, sem instalar nada, sem servidor e sem build. Fácil de publicar e de compartilhar. |
-| **JavaScript puro**, sem framework | O jogo é uma interface de painéis e botões; um laço de render simples dá conta e mantém o arquivo leve. |
+| **JavaScript puro**, sem framework | O jogo é uma interface de painéis e botões; um laço de render simples dá conta. |
+| **three.js e modelos embutidos**, só para gerar sprites | Os modelos 3D são renderizados uma vez em imagens, e o jogo continua sendo HTML/SVG. Embutir a biblioteca e os GLB mantém o jogo funcionando offline e em um arquivo só (por isso o `index.html` tem cerca de 2,6 MB). |
 | **Estado só em memória** | Requisito do design: partida de sessão única. Nada de `localStorage` ou servidor. |
 | **Interface em HTML/CSS**, gráfico em `<canvas>` | Botões e textos acessíveis por teclado e leitor de tela; o canvas só para o gráfico de ouro. |
 
@@ -19,7 +20,10 @@ O `index.html` está dividido em blocos, na ordem:
 | `<style>` | Tema escuro com variáveis CSS em `:root`, componentes (barra superior, mapa isométrico, HUD, dock, painéis, cartas de dragão, arena), animações (`@keyframes`) e ajustes para celular |
 | Esqueleto HTML | `#top` (barra de recursos), `#stage` com `#mapwrap`/`#map` (ilha), `#hud` e `#somctl` (botão de som), `#sheet` (painel aberto), `#tabs` (dock inferior), `#toasts`, `#overlay` (início, pausa, despertar, revelação, fim), `#lostEgg` |
 | 1º `<script>`: áudio | Cópia de `audio/audio.js` entre `AUDIO-START` e `AUDIO-END`; cria o objeto global `Som`. Veja [10-sons-e-musica.md](10-sons-e-musica.md#para-quem-programa) |
-| 2º `<script>`: `DADOS DO JOGO` | Todas as tabelas de balanceamento, entre os marcadores `DATA-START` e `DATA-END` |
+| 2º `<script>`: three.js | three.js r147 (licença MIT) com GLTFLoader e SkeletonUtils, entre `THREE-START` e `THREE-END` |
+| 3º `<script>`: modelos prontos | Arquivos GLB (CC0, Quaternius e KayKit) em base64, entre `GLB-START` e `GLB-END` |
+| 4º `<script>`: modelos 3D | Carregamento dos GLB, recoloração e modelos procedurais de reserva, entre `MODELS-START` e `MODELS-END`; cria o objeto global `M3` |
+| 5º `<script>`: `DADOS DO JOGO` | Todas as tabelas de balanceamento, entre os marcadores `DATA-START` e `DATA-END` |
 | `UTILITÁRIOS` | `$`, `rnd`, `pick`, `clamp`, `round5`, `fmt` (números em pt-BR com k/M/B), `fmtTime` |
 | `ESPÉCIES E ATRIBUTOS` | Geração das 50 espécies e as fórmulas de atributos, custos e eficácia elemental |
 | `ESTADO` | `newStats()`, `newState()`, `addDragon()` e helpers de capacidade e produção |
@@ -118,7 +122,15 @@ O mapa é um único SVG de 1000 × 600 gerado por `viewMap()`:
 - **Cliques:** cada construção é um `<g class="bld" data-a="...">`, tratado pelo mesmo despacho de ações dos botões.
 - **Celular:** o mapa mantém 920 px de largura dentro de `#mapwrap`, que rola de lado; no primeiro render ele é centralizado.
 
-## Desenho dos dragões
+## Modelos 3D e sprites
+
+- **Modelos prontos (atual):** os GLB embutidos são decodificados do base64 e carregados com o `GLTFLoader`. O dragão é o "Dragon Evolved" (Quaternius), clonado com `SkeletonUtils` e recolorido por espécie (corpo no 1º elemento; barriga e membrana das asas no 2º), escalado pela raridade (0,9× a 1,14×), com chifres e coroa dourados no Lendário, auréola na Luz e partículas do elemento girando em volta. As construções principais e a decoração vêm do KayKit Medieval Hexagon Pack.
+- **Dragões em sprite:** cada espécie é renderizada numa tira de 8 quadros de 240 × 200 px da animação "Flying_Idle". A tira vira uma imagem `blob:` e a troca de quadros é feita por SMIL (`<animate>`) dentro do SVG, com fase própria por dragão; flutuação e aura continuam em CSS.
+- **Construções em sprite:** renderizadas com uma câmera isométrica 2:1 igual à do mapa (1 lote = 1 unidade, em 2x). Chocadeira, fazendas e bases dos habitats (uma por tema de elemento) usam os modelos procedurais de `M3`.
+- **Fila de preparo:** ao abrir o jogo, os sprites são gerados um por vez em segundo plano, para não travar a tela (`sprBusy`). Se não houver WebGL ou o `M3` não existir, a fila desliga (`sprOff`).
+- **Cadeia de reserva:** GLB prontos → modelos procedurais de `M3` (se os GLB falharem) → desenho SVG (sem WebGL, ou enquanto o sprite não está pronto).
+
+## Desenho dos dragões (reserva em SVG)
 
 `dragonSVG(els, rar, seed)` monta um **SVG vetorial** (viewBox 120 × 100, dragão olhando para a direita) a partir de três dados: elementos, raridade e uma semente.
 

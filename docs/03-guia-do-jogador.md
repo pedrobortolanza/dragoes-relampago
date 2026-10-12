@@ -13,7 +13,7 @@ Você começa com:
 ## A tela
 
 - **Barra superior:** ouro (com ouro por segundo), comida, gemas, nível e XP, o cronômetro ☠️ até o despertar do Ancestral (no Infinito, com o número da onda), Pausar e Encerrar. Bônus de eventos aparecem como selos logo abaixo.
-- **A ilha (mapa isométrico):** ocupa o centro da tela. Tudo se faz clicando nas construções:
+- **A ilha (mapa isométrico):** ocupa o centro da tela. Dragões e construções são modelos 3D com animação. Tudo se faz clicando nas construções:
 
 | Construção | O que faz ao clicar |
 |---|---|

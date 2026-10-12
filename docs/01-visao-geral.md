@@ -12,7 +12,7 @@ Tudo o que Dragon City faz em semanas, comprimido em 10, 20 ou 30 minutos, numa 
 |---|---|
 | **Sessão única** | Nada é salvo. Fechou a aba, a partida acabou. Por isso tudo é rápido: ovos chocam em segundos, plantações crescem em segundos, missões se renovam na hora. |
 | **Tempo finito com motivo para acabar** | O relógio (10, 20 ou 30 minutos) é a contagem para o **despertar do Dragão Ancestral**. Quando zera, começa a **Invasão Final**: uma única batalha contra ele, que vale a maior fatia da pontuação. Ao fim, você recebe uma nota de **S a D**. |
-| **Visual de Dragon City** | A tela principal é a ilha vista em diagonal (isométrica), com construções clicáveis, balões de coleta e dragões desenhados e animados passeando e voando. |
+| **Visual de Dragon City** | A tela principal é a ilha vista em diagonal (isométrica), com construções clicáveis, balões de coleta e dragões em 3D animados passeando e voando. |
 | **Som** | Música que muda com o momento (ilha, batalha, invasão, placar) e fica tensa quando o Ancestral se aproxima, mais efeitos para cada ação. Tudo gerado no navegador. Veja [10-sons-e-musica.md](10-sons-e-musica.md). |
 | **Dinâmico** | Sempre há algo para clicar: ouro acumulando nos habitats, comida pronta, ovos chocando, missões para resgatar e eventos surpresa a cada 1 a 2 minutos. |
 | **Muitas estatísticas** | Cerca de 60 números acompanhados ao vivo (ouro por minuto, taxa de vitória, maior golpe, cliques por minuto...), um gráfico de ouro ao longo do tempo e um relatório completo no fim. |
@@ -72,4 +72,4 @@ O jogador também pode clicar em **Encerrar** antes disso, mas aí a ilha fica s
 
 ## Tecnologia em uma linha
 
-Um único arquivo `index.html` com HTML, CSS e JavaScript puro, sem bibliotecas nem servidor; até o áudio é sintetizado por código. Detalhes em [08-arquitetura.md](08-arquitetura.md).
+Um único arquivo `index.html` com HTML, CSS e JavaScript, sem servidor e sem nada a instalar. A única biblioteca, three.js (para os modelos 3D), e os próprios modelos 3D (CC0, de Quaternius e Kay Lousberg) vêm embutidos no arquivo; o áudio é sintetizado por código. Detalhes em [08-arquitetura.md](08-arquitetura.md).

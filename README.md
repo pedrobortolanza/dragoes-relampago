@@ -7,7 +7,7 @@ Jogo de navegador no estilo Dragon City, feito para caber numa sessão: crie, cr
 - Ou sirva a pasta, se preferir: `python3 -m http.server` e acesse `http://localhost:8000`.
 
 ## Arquivos
-- `index.html`: o jogo inteiro (HTML, CSS e JavaScript puro, com o three.js embutido para os modelos 3D; funciona sem internet).
+- `index.html`: o jogo inteiro (HTML, CSS e JavaScript puro, com o three.js e os modelos 3D embutidos; funciona sem internet).
 - `DESIGN-NOTAS.md`: mecânicas, fórmulas, números de balanceamento e conquistas implementados.
 - `docs/`: documentação completa.
 
@@ -17,3 +17,7 @@ Jogo de navegador no estilo Dragon City, feito para caber numa sessão: crie, cr
 3. Alimente os dragões até o nível 3 e cruze dois deles na aba Cruzar.
 4. Monte um time de até 3 dragões e suba as 8 ligas da Arena.
 5. Quando o tempo acabar, defenda a ilha do Dragão Ancestral na Invasão Final.
+
+## Créditos
+- Modelos 3D CC0: dragão de [Quaternius](https://quaternius.com) (Ultimate Monsters) e construções do KayKit Medieval Hexagon Pack de [Kay Lousberg](https://kaylousberg.com).
+- [three.js](https://threejs.org) (MIT).

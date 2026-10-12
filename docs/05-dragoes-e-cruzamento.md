@@ -131,7 +131,25 @@ Registro das espécies descobertas na partida (por compra, chocagem ou ovo). Mos
 
 ## Aparência e animações
 
-Cada dragão é **desenhado em vetor (SVG)** de corpo inteiro, de perfil: cabeça com chifres e olho, corpo com barriga e escamas, duas asas, cauda e patas com garras. O desenho é montado a partir dos elementos e da raridade, então cada uma das 50 espécies tem uma aparência própria.
+Os dragões e as construções principais são **modelos 3D feitos por artistas**, renderizados uma vez em segundo plano e transformados em imagens animadas (sprites), do mesmo jeito que o Dragon City usa sprites pré-renderizados. Todos os modelos são CC0 (domínio público).
+
+**Dragão (visual principal):** o modelo "Dragon Evolved", do pacote Ultimate Monsters, de Quaternius. É o mesmo modelo para todas as espécies, recolorido: o corpo na cor do 1º elemento; barriga e membrana das asas na cor do 2º. Ele aparece com a animação de voo parado ("Flying_Idle") em 8 quadros, e cada dragão começa num ponto diferente do ciclo.
+
+| O que muda | Como |
+|---|---|
+| Raridade | O tamanho cresce de 0,9× (Comum) até 1,14× (Lendário); Lendários ganham chifres e coroa dourados |
+| Elemento | Partículas do elemento giram em volta do dragão: chamas, gotas, folhas, pedras, raios, cristais de gelo, anéis de metal, cristais de trevas ou brilhos |
+| Luz | Ganha uma auréola |
+
+**Construções:** do KayKit Medieval Hexagon Pack, de Kay Lousberg. A Arena é um castelo, o Mercado uma barraca de mercado, o Mural de Missões uma taverna e a Montanha do Amor uma montanha com árvores e um coração. O mapa também tem pinheiros, pedras, vitórias-régias, barris, caixotes, sacos, bandeiras, um moinho perto das fazendas e um poço no cruzamento central dos caminhos, só como decoração. A Chocadeira, as fazendas e as bases dos habitats usam modelos 3D próprios do jogo.
+
+Os sprites são preparados aos poucos logo ao abrir o jogo, um por vez, sem travar a tela.
+
+**Reservas, em ordem:** se os modelos prontos não carregarem, o jogo usa modelos 3D próprios, feitos por código (um dragão fofo de cabeça grande, olhos enormes e contorno de desenho animado, com espinhos, crista e coroa conforme a raridade). Sem WebGL, ou enquanto um sprite não fica pronto, mostra o desenho vetorial descrito abaixo.
+
+### Desenho de reserva (SVG)
+
+Enquanto o sprite 3D de uma espécie não fica pronto, ou se o navegador não tiver WebGL, o jogo mostra um desenho vetorial (SVG) do dragão. Ele é de corpo inteiro, de perfil: cabeça com chifres e olho, corpo com barriga e escamas, duas asas, cauda e patas com garras. O desenho é montado a partir dos elementos e da raridade, então cada uma das 50 espécies tem uma aparência própria.
 
 **Cores:** o corpo usa a cor do primeiro elemento; asas e barriga usam tons do segundo, sempre em degradê. Um dragão puro fica todo em tons de uma cor.
 
