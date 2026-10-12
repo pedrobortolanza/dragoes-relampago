@@ -110,7 +110,8 @@ O painel **Cruzar** (Montanha do Amor) mostra a tabela exata de chances para o p
 
 - Começa com 1 espaço; dá para comprar até 4 (300, 1.500 e 6.000 de ouro).
 - Cada ovo choca em segundos de acordo com a raridade: Comum 8, Raro 15, Épico 25, Lendário 40.
-- Ovo pronto balança; é preciso clicar em **Chocar**, e é preciso ter vaga nos habitats.
+- Na janela da Chocadeira, cada ovo é desenhado com as cores dos elementos da espécie (com brilhos extras nos Épicos e Lendários), deitado num ninho de palha, com os segundos que faltam e uma barra de progresso. Vagas livres aparecem como ninhos vazios, com um atalho para Cruzar.
+- Ovo pronto brilha e balança; é preciso clicar em **Chocar**, e é preciso ter vaga nos habitats.
 - **Acelerar:** 1 gema a cada 8 segundos que faltam.
 - O ovo mostra a raridade, mas o nome só aparece se a espécie já estiver no Dragonário.
 - Chocar uma espécie nova dá +15 XP extra e a registra no Dragonário.

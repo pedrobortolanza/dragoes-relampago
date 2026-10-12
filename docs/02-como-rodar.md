@@ -1,6 +1,6 @@
 # Como rodar
 
-O jogo é um único arquivo, `dragoncity/index.html` (cerca de 2,6 MB, porque os modelos 3D vêm dentro dele). Não precisa instalar nada.
+O jogo é um único arquivo, `dragoncity/index.html` (cerca de 2,9 MB, porque os modelos 3D e os cenários dos menus vêm dentro dele). Não precisa instalar nada.
 
 ## Jeito mais simples
 

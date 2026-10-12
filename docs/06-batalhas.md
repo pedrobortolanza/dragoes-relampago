@@ -102,9 +102,28 @@ Encerrar a partida antes do despertar deixa a ilha sem defesa: a Invasão Final 
 
 O botão **▶ Batalha automática** faz o jogo escolher um golpe a cada 1,1 segundo (tempo para ver as animações de ataque): usa o Especial sempre que estiver disponível e render pelo menos o mesmo que o Ataque (considerando a vantagem elemental). Só funciona com o painel da Arena aberto; ao fechá-lo a batalha espera por você.
 
+## Visual da Arena
+
+Cada liga tem o seu cenário de fundo, sempre com arquibancada, torcida e bandeiras:
+
+| Liga | Cenário |
+|---|---|
+| Bronze | deserto |
+| Prata | neve |
+| Ouro | campo dourado |
+| Platina | verde-água |
+| Diamante | cristais |
+| Mestre | noite roxa |
+| Grão-Mestre | vulcão |
+| Campeões | aurora |
+| Ancestral adormecido e Invasão Final | céu de tempestade com raios |
+
+- **Fora da luta:** uma faixa mostra a liga atual, o time aparece em pódios (as vagas vazias também) e um botão grande **Lutar!** começa a próxima batalha. A escada de ligas é desenhada como escudos, cada um na cor da sua liga.
+- **Na luta:** cada lado tem uma placa com o nome e a barra de vida, com o número dentro dela. Os dragões ficam em pódios, com um selo **VS** no meio, e os controles e o registro de golpes ficam em caixas escuras sobre o cenário.
+
 ## Animações de combate
 
-- Os dois dragões aparecem grandes, frente a frente (o oponente espelhado); o Dragão Ancestral é desenhado ainda maior.
+- Os dois dragões aparecem grandes, frente a frente em pódios (o oponente espelhado); o Dragão Ancestral é desenhado ainda maior.
 - A cada golpe, o atacante dá uma **investida** curta, um **projétil com o emoji do elemento** do golpe voa em arco até o alvo, e o alvo **treme e pisca** com o impacto.
 - O dano sobe sobre o alvo como número: verde quando é super eficaz, dourado com "CRÍTICO" em acertos críticos, vermelho nos demais.
 - Golpes do mesmo turno (o seu e a resposta do oponente) são mostrados em sequência, com cerca de meio segundo entre eles.

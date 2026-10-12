@@ -6,7 +6,7 @@
 |---|---|
 | **Um único `index.html`** com HTML, CSS e JavaScript juntos | Roda com dois cliques, sem instalar nada, sem servidor e sem build. Fácil de publicar e de compartilhar. |
 | **JavaScript puro**, sem framework | O jogo é uma interface de painéis e botões; um laço de render simples dá conta. |
-| **three.js e modelos embutidos**, só para gerar sprites | Os modelos 3D são renderizados uma vez em imagens, e o jogo continua sendo HTML/SVG. Embutir a biblioteca e os GLB mantém o jogo funcionando offline e em um arquivo só (por isso o `index.html` tem cerca de 2,6 MB). |
+| **three.js e modelos embutidos**, só para gerar sprites | Os modelos 3D são renderizados uma vez em imagens, e o jogo continua sendo HTML/SVG. Embutir a biblioteca e os GLB mantém o jogo funcionando offline e em um arquivo só (por isso o `index.html` tem cerca de 2,9 MB). |
 | **Estado só em memória** | Requisito do design: partida de sessão única. Nada de `localStorage` ou servidor. |
 | **Interface em HTML/CSS**, gráfico em `<canvas>` | Botões e textos acessíveis por teclado e leitor de tela; o canvas só para o gráfico de ouro. |
 
@@ -17,7 +17,7 @@ O `index.html` está dividido em blocos, na ordem:
 | Bloco | Conteúdo |
 |---|---|
 | `<head>` (implícito) | Título, descrição, fontes do Google Fonts |
-| `<style>` | Tema escuro com variáveis CSS em `:root`, componentes (barra superior, mapa isométrico, HUD, dock, painéis, cartas de dragão, arena), animações (`@keyframes`) e ajustes para celular |
+| `<style>` | Variáveis CSS em `:root`, componentes no estilo de jogo (botões em relevo por cor, cápsulas da barra superior, dock de botões redondos, janelas com moldura dourada, cartas de dragão, arena, ninhos), os cenários de fundo de cada menu e de cada liga como SVG embutido em `data:` URLs, animações (`@keyframes`) e ajustes para celular |
 | Esqueleto HTML | `#top` (barra de recursos), `#stage` com `#mapwrap`/`#map` (ilha), `#hud` e `#somctl` (botão de som), `#sheet` (painel aberto), `#tabs` (dock inferior), `#toasts`, `#overlay` (início, pausa, despertar, revelação, fim), `#lostEgg` |
 | 1º `<script>`: áudio | Cópia de `audio/audio.js` entre `AUDIO-START` e `AUDIO-END`; cria o objeto global `Som`. Veja [10-sons-e-musica.md](10-sons-e-musica.md#para-quem-programa) |
 | 2º `<script>`: three.js | three.js r147 (licença MIT) com GLTFLoader e SkeletonUtils, entre `THREE-START` e `THREE-END` |
@@ -104,6 +104,8 @@ Espécies são identificadas por uma **chave**: o elemento (`fogo`), dois elemen
 ## Renderização
 
 - Cada parte da tela é gerada como **string HTML/SVG** por uma função pura: `renderTop` (barra), `renderTabs` (dock), `viewMap` (ilha), `viewHud` (sementes e botões sobre o mapa) e, quando `S.tab` não é `ilha`, um painel `#sheet` com o conteúdo de `renderView` → `viewDragons`, `viewBreed`, `viewArena`, ... O painel tem um fundo clicável que o fecha.
+- O `<section class="sheet">` leva `data-tab` (o menu aberto) e `data-lg` (o cenário da Arena, dado por `arenaLg()`: a liga atual, de 1 a 9, ou `final` na Invasão Final e no Ancestral adormecido). O CSS escolhe o cenário de fundo e a cor da faixa de título só por esses dois atributos, sem nenhum código de desenho no JavaScript.
+- `eggSVG(sp, id, ready)` desenha cada ovo da Chocadeira: casca com degradê nas cores dos elementos da espécie, pintas, brilhos nos Épicos e Lendários e um halo quando está pronto, dentro de um ninho de palha. Sem espécie, desenha o ninho vazio.
 - `render()` só mexe no DOM quando a string mudou em relação à última vez, e mesmo assim não substitui o `innerHTML`: a função `morph()` compara a árvore nova com a atual e altera só os nós, atributos e textos diferentes. Assim os elementos que não mudaram (como os desenhos dos dragões) continuam os mesmos e suas animações CSS não reiniciam a cada atualização.
 - O gráfico é desenhado em `<canvas>` por `drawChart()`, sempre que o painel Estatísticas é redesenhado e a cada 5 s.
 - Toasts (avisos) e textos flutuantes ("+120") são elementos criados e removidos por `setTimeout`.
@@ -183,6 +185,8 @@ O jogo também aceita `window.claude.hot` (quando publicado como Artifact): ao a
 **Nova estatística:** adicionar o contador em `newStats()`, incrementá-lo na ação correspondente e incluir a linha em `statRows()`.
 
 **Nova conquista:** adicionar um objeto em `ACH` com `cat`, `id` único, `i`, `n`, `d`, `g` e a condição `c: stats => booleano`. Ela aparece sozinha no painel, no fim de partida e na pontuação.
+
+**Nova liga:** além da entrada em `LEAGUES`, criar a regra `.sheet[data-tab="arena"][data-lg="N"] .sheet-body` com o cenário dela no `<style>`; sem a regra, a Arena fica sem fundo nessa liga.
 
 **Novo tipo de missão:** adicionar em `MISSION_TPL` apontando para um campo de `stats` e com a função de meta `tgt(nível)`.
 

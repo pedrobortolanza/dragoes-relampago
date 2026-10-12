@@ -23,7 +23,7 @@ Jogo de navegador inspirado em Dragon City, para uma única sessão: crie, cruze
 
 | | |
 |---|---|
-| Visão | Ilha isométrica clicável, estilo Dragon City, com dragões e construções em 3D (modelos CC0 renderizados em sprites com three.js) e painéis sobrepostos |
+| Visão | Ilha isométrica clicável, estilo Dragon City, com dragões e construções em 3D (modelos CC0 renderizados em sprites com three.js) e menus com cara de jogo: botões em relevo, molduras douradas e um cenário de fundo por menu e por liga |
 | Elementos | 9 (6 básicos, 3 especiais) |
 | Espécies | 50 (6 Comuns, 18 Raras, 21 Épicas, 5 Lendárias) |
 | Nível máximo do dragão / do jogador | 15 / 30 |

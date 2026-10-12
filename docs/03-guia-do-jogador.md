@@ -12,7 +12,7 @@ Você começa com:
 
 ## A tela
 
-- **Barra superior:** ouro (com ouro por segundo), comida, gemas, nível e XP, o cronômetro ☠️ até o despertar do Ancestral (no Infinito, com o número da onda), Pausar e Encerrar. Bônus de eventos aparecem como selos logo abaixo.
+- **Barra superior:** cápsulas de ouro (com ouro por segundo), comida e gemas, cada uma com o ícone numa moeda redonda; a estrela de nível com a barra de XP; o relógio vermelho ☠️ até o despertar do Ancestral (no Infinito, com o número da onda); Pausar e Encerrar. Bônus de eventos aparecem como selos logo abaixo.
 - **A ilha (mapa isométrico):** ocupa o centro da tela. Dragões e construções são modelos 3D com animação. Tudo se faz clicando nas construções:
 
 | Construção | O que faz ao clicar |
@@ -28,7 +28,24 @@ Você começa com:
 
 - **Botão de som** 🔊 no canto superior direito do mapa (passe o mouse para ver os volumes). O som começa no primeiro clique.
 - **Sobre o mapa:** escolha da semente a plantar e os botões Colher e replantar tudo (nível 3+) e Coletar tudo (nível 5+).
-- **Barra inferior (dock):** atalhos para todos os painéis. Cada painel abre por cima da ilha e fecha com ✕, clicando fora ou com Esc.
+- **Barra inferior (dock):** botões redondos em relevo, um para cada menu. O menu aberto fica laranja e sobe um pouco; selos vermelhos mostram o que espera por você. Cada menu abre como uma janela por cima da ilha e fecha com o botão ✕ redondo, clicando fora ou com Esc.
+
+Cada janela tem moldura dourada, uma faixa de título na cor do menu e um cenário de fundo próprio:
+
+| Menu | Cor da faixa | Cenário de fundo |
+|---|---|---|
+| 🐉 Dragões | roxo | santuário nas montanhas ao entardecer |
+| 💞 Cruzar | rosa | jardim rosa com corações |
+| 🥚 Chocadeira | madeira | celeiro de madeira com lâmpadas e palha |
+| ⚔️ Arena | vermelho | um cenário por liga (veja [06-batalhas.md](06-batalhas.md#visual-da-arena)) |
+| 📜 Missões | marrom | quadro de cortiça |
+| 🛒 Loja | verde | toldo listrado e balcão |
+| 🏆 Conquistas | dourado | salão de troféus |
+| 📊 Estatísticas | azul | planta azul quadriculada |
+
+A tela inicial e o placar final usam o cenário do santuário.
+
+Os botões também têm cor por função: **laranja** para a ação principal, **verde** para Chocar e Cruzar, **azul** para o que gasta gemas, **vermelho** para Desistir, Encerrar e Fechar, e **roxo-pedra** para o resto. Eles afundam ao serem clicados.
 
 | Tecla | Painel | O que se faz nele |
 |---|---|---|
